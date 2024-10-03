@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizza Ordering System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>Pizza Boy</h1>
+            <ul>
+                <li><a href="#">Menu</a></li>
+                <li><a href="#">Promotions</a></li>
+                <li><a href="#">Order Now</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h2>New World Cheese Pizza</h2>
+        <img src="{{ url_for('static', filename='cheese_pizza.jpg') }}" alt="World Cheese Pizza">
+        <p>Featuring 8 premium cheeses. From $18.45</p>
+        <button class="order-btn">Order Now</button>
+    </section>
+
+    <section class="menu">
+        <h2>Our Pizzas</h2>
+        <form action="/submit_order" method="POST">
+            <div id="pizza-list">
+                <!-- Dynamically generate the pizza menu using Jinja2 -->
+                {% for pizza in pizzas %}
+                <div class="pizza-item">
+                    <img src="{{ url_for('static', filename='pizza_image_placeholder.jpg') }}" alt="{{ pizza.name }}">
+                    <h3>{{ pizza.name }}</h3>
+                    <p>Category: {{ pizza.category }}</p>
+                    <p>Ingredients: {{ pizza.ingredients }}</p>
+                    <p>Price: ${{ pizza.price }}</p>
+                    <label>
+                        Quantity:
+                        <input type="number" name="order_items[{{ pizza.pizza_id }}]" min="1" value="1">
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit">Submit Order</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>Pizza Boy; 2024</p>
+    </footer>
+</body>
+</html>
