@@ -33,16 +33,16 @@ class DBManager:
             print("Database connection closed.")
 
     def execute_query(self, query):
-        """Execute a SELECT query and return the results."""
-        if self.connection is None or not self.connection.is_connected():
+        """Execute a query and return results if it's a SELECT query."""
+        if self.connection is None:
+            self.connect()
             raise Exception("Database connection is not established.")
 
         cursor = self.connection.cursor()
         try:
             cursor.execute(query)
             results = cursor.fetchall()
-            column_names = cursor.column_names
-            return results, column_names
+            return results
         except Error as e:
             print(f"Error while executing query: {e}")
             raise e
@@ -66,7 +66,7 @@ class DBManager:
         except Error as e:
             print(f"Error while executing query: {e}")
             raise e
-    
+
     def close_connection(self):
         if self.connection:
             try:

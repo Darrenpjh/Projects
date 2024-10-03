@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizza Ordering System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Pizza Boy</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <header>
+        <h1>Pizza Boy</h1>
         <nav>
-            <h1>Pizza Boy</h1>
             <ul>
                 <li><a href="#">Menu</a></li>
                 <li><a href="#">Promotions</a></li>
@@ -22,17 +22,17 @@
         <h2>Our Pizzas</h2>
         <form id="pizza-form">
             <div id="pizza-list">
-                {% for pizza in pizzas %}
-                <div class="pizza-item">
-                    <h3>{{ pizza.name }}</h3>
-                    <p>Category: {{ pizza.category }}</p>
-                    <p>Ingredients: {{ pizza.ingredients }}</p>
-                    <p>Price: ${{ pizza.price }}</p>
-                    <label>
-                        Quantity:
-                        <input type="number" name="order_items[{{ pizza.pizza_id }}]" min="1" value="1">
-                    </label>
-                </div>
+                {% for pizza in pizzas: %}
+                    <div class="pizza-item">
+                        <h3>{{ pizza[0] }}</h3>
+                        <p>Category: {{ pizza[1] }}</p>
+                        <p>Ingredients: {{ pizza[2] }}</p>
+                        <p>Size: {{ pizza[3] }}</p>
+                        <p>Price: ${{ pizza[4] }}</p>
+                        <label for="quantity-{{ pizza.pizza_id }}">Quantity:
+                            <input type="number" id="quantity-{{ pizza.pizza_id }}" name="quantity-{{ pizza.pizza_id }}" min="1" value="1">
+                        </label>
+                    </div>
                 {% endfor %}
             </div>
             <button type="submit">Submit Order</button>
@@ -40,10 +40,9 @@
     </section>
 
     <footer>
-        <p>Pizza Boy &copy; 2024</p>
+        <p>Pizza Boy © 2024</p>
     </footer>
-
-    <!-- Include the external JS file -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
