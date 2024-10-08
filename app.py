@@ -40,12 +40,15 @@ def login():
     user = db_manager.db_login(username, password)
     db_manager.disconnect()
     
-    if user:
+    if user and isinstance(user, (list, tuple)):
         print(f"User found: {user}")
         session['user_id'] = user[0]
         session['username'] = user[1]
         session['role'] = user[3]
-        return jsonify({'success': True, 'role': user[3], 'redirect_url': '/staff' if user[3] == 0 else '/'})
+        if user[3] == 0:
+            return jsonify({'success': True, 'role': user[3], 'redirect_url': '/staff'})
+        elif user[3] == 1:
+             return jsonify({'success': True, 'role': user[3], 'redirect_url': '/'})
     else:
         print("Login Failed")
         return jsonify({'success': False, 'message':'Invalid credentials'})
@@ -74,7 +77,7 @@ def staff_info():
 
     try:
         pizza_types = db_manager.execute_query("SELECT * FROM pizza_type") or []
-        pizza_orders = db_manager.execute_query("SELECT * FROM pizza_order") or []
+        pizza_orders = db_manager.execute_query("SELECT * FROM order_info") or []
     
     except Exception as e:
         return jsonify({'error': f"Failed to fetch data: {str(e)}"}), 500

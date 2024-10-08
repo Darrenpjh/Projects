@@ -16,10 +16,10 @@
                 <li><a href="#orders">Orders</a></li>
             </ul>
         </nav>
-        <div id="user-info">
-            <p>Welcome, <span id="user-name"></span>!</p>
-            <button onclick="logout()">Logout</button>
-        </div>
+            <div id="user-info">
+                <p>Welcome, {{session['username']}}</span>!</p>
+                <button onclick="logout()">Logout</button>
+            </div>
     </header>
 
     <main>
@@ -35,7 +35,14 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Pizza types will be populated here -->
+                    {% for pizza in pizza_types%}
+                    <tr>
+                        <td>{{pizza[0]}}</td>
+                        <td>{{pizza[1]}}</td>
+                        <td>{{pizza[2]}}</td>
+                        <td>{{pizza[3]}}</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </section>
@@ -45,15 +52,25 @@
             <table id="orders-table">
                 <thead>
                     <tr>
+                        <th>Order Detail ID</th>
                         <th>Order ID</th>
-                        <th>Pizza Type ID</th>
-                        <th>Size</th>
-                        <th>Price</th>
+                        <th>Pizza ID</th>
                         <th>Quantity</th>
+                        <th>Date</th>
+                        <th>Time</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Orders will be populated here -->
+                    {% for order in pizza_orders%}
+                    <tr>
+                        <td>{{order[0]}}</td>
+                        <td>{{order[1]}}</td>
+                        <td>{{order[2]}}</td>
+                        <td>{{order[3]}}</td>
+                        <td>{{order[4]}}</td>
+                        <td>{{order[5]}}</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </section>
@@ -109,16 +126,24 @@
         }
 
         function logout() {
-            fetch('/logout', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        sessionStorage.removeItem('username');
-                        window.location.href = '/';
-                    }
-                })
-                .catch(error => console.error('Error:', error));
+            fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirect to the URL returned by the server (or directly to the homepage)
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert('Logout failed. Please try again.');
+                }
+            })
+            .catch(error => console.error('Error:', error));
         }
+
     </script>
 </body>
 </html>

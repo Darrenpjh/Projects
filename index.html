@@ -16,25 +16,26 @@
                 <li><a href="#order-now">Order Now</a></li>
             </ul>
         </nav>
-        <button id="login-btn" onclick="toggleLoginForm()">Login</button>
+        {%if 'username' in session %}
+            <div id="user-info" style="display: block;">
+                <p>Welcome, {{ session['username']}}!</p>
+                <button onclick="logout()">Logout</button>
+            </div>   
+        {% else %}
+            <div id="login-section" style="display: block;">    
+                <button id="login-btn" onclick="toggleLoginForm()">Login</button>
+            </div>
+        {% endif %}
+        
     </header>
-
-    <div id="login-form" style="display: none;">
-        <form onsubmit="login(event)">
-            <input type="text" id="username" placeholder="Username" required>
-            <input type="password" id="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-    </div>
-
-    {%if 'username' in session %}
-    <div id="user-info" style="display: none;">
-        <p>Welcome, {{ session['username']}}!</p>
-        <a id="staff" href="/staff.html" style="display: none;">Staff Page</a>
-        <button onclick="logout()">Logout</button>
-    </div>
-
-    {% endif %}
+        <div id="login-form" style="display: none;">
+            <form onsubmit="login(event)">
+                <input type="text" id="username" placeholder="Username" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+   
 
     <section class="menu">
         <h2>Our Pizzas</h2>
@@ -59,9 +60,17 @@
     </footer>
 
     <script>
+
         function toggleLoginForm() {
             const loginForm = document.getElementById('login-form');
-            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
+            const loginSection = document.getElementById('login-section');
+            if (loginForm.style.display === 'none') {
+                loginForm.style.display = 'block';
+                loginSection.style.display = 'none'; // Hide login button
+            } else {
+                loginForm.style.display = 'none';
+                loginSection.style.display = 'block'; // Show login button
+            }
         }
 
         function login(event) {
@@ -87,8 +96,12 @@
                         window.location.href = data.redirect_url;
                     }
                     else if(data.role == 1) {
-                        //Customer view
+                        // If login is successful, update the page
                         window.location.href = data.redirect_url;
+                        document.getElementById("login-button").style.display = 'none';
+                        document.getElementById("login-section").style.display = 'none';
+                        document.getElementById("user-info").style.display = 'block';
+                        document.getElementById("user-name").textContent = data.username;  
                     }
                 } else {
                     alert('Login failed. Please try again.');
@@ -104,8 +117,9 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        window.location.href = data.redirect_url;
                         document.getElementById('user-info').style.display = 'none';
-                        document.getElementById('login-btn').style.display = 'block';
+                        document.getElementById('login-btn').style.display = 'inline-block';
                         document.getElementById('staff').style.display = 'none';
                         sessionStorage.removeItem('username');
                     }
