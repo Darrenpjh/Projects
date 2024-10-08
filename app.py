@@ -20,6 +20,43 @@ def index():
         
     return render_template('index.html', pizzas=pizzas)
 
+#
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    db_manager.connect()
+    user = db_manager.db_login(username, password)
+    db_manager.disconnect()
+    
+    if user and isinstance(user, (list, tuple)):
+        session['user_id'] = user[0]
+        session['username'] = user[1]
+        session['role'] = user[3]
+        return jsonify({'success': True, 'role': user[3]})
+    else:
+        return jsonify({'success': True})
+
+@app.route('/staff_info')
+def staff_info():
+    # Check if the user is logged in and has a staff role (role == 0)
+    #if 'user_id' not in session or session['role'] != 0:
+    #    return jsonify({'error': 'Unauthorized access'}), 403
+
+    # Fetch pizza data
+    db_manager.connect()
+    pizza_types = db_manager.execute_query("SELECT * FROM pizza_type") or []
+    pizza_orders = db_manager.execute_query("SELECT * FROM pizza_order") or []
+    db_manager.disconnect()
+    
+    # Render the staff.html template and pass the pizza data
+    return render_template('staff.html', pizza_types=pizza_types, pizza_orders=pizza_orders)
+
+#
+
 @app.route('/submit_order', methods=['POST'])
 def submit_order():
     order_items = request.form

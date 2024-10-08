@@ -4,45 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pizza Boy</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <header>
         <h1>Pizza Boy</h1>
         <nav>
             <ul>
-                <li><a href="#">Menu</a></li>
-                <li><a href="#">Promotions</a></li>
-                <li><a href="#">Order Now</a></li>
+                <li><a href="#menu">Menu</a></li>
+                <li><a href="#promotions">Promotions</a></li>
+                <li><a href="#order-now">Order Now</a></li>
             </ul>
         </nav>
+        <button id="login-btn" onclick="toggleLoginForm()">Login</button>
     </header>
+
+    <div id="login-form" style="display: none;">
+        <form onsubmit="login(event)">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <div id="user-info" style="display: none;">
+        <p>Welcome, <span id="user-name"></span>!</p>
+        <a id="staff" href="/staff.html" style="display: none;">Staff Page</a>
+        <button onclick="logout()">Logout</button>
+    </div>
 
     <section class="menu">
         <h2>Our Pizzas</h2>
-        <form id="pizza-form">
-            <div id="pizza-list">
-                {% for pizza in pizzas: %}
-                    <div class="pizza-item">
-                        <h3>{{ pizza[0] }}</h3>
-                        <p>Category: {{ pizza[1] }}</p>
-                        <p>Ingredients: {{ pizza[2] }}</p>
-                        <p>Size: {{ pizza[3] }}</p>
-                        <p>Price: ${{ pizza[4] }}</p>
-                        <label for="quantity-{{ pizza.pizza_id }}">Quantity:
-                            <input type="number" id="quantity-{{ pizza.pizza_id }}" name="quantity-{{ pizza.pizza_id }}" min="1" value="1">
-                        </label>
-                    </div>
-                {% endfor %}
+        <div id="pizza-list">
+            {% for pizza in pizzas %}
+            <div class="pizza-item">
+                <h3>{{ pizza[0] }}</h3>
+                <p>Category: {{ pizza[1] }}</p>
+                <p>Ingredients: {{ pizza[2] }}</p>
+                <p>Size: {{ pizza[3] }}</p>
+                <p>Price: ${{ pizza[4] }}</p>
+                <label for="quantity-{{ loop.index }}">Quantity:</label>
+                <input type="number" id="quantity-{{ loop.index }}" name="quantity-{{ loop.index }}" min="0" value="0">
             </div>
-            <button type="submit">Submit Order</button>
-        </form>
+            {% endfor %}
+        </div>
+        <button onclick="submitOrder()">Submit Order</button>
     </section>
 
     <footer>
         <p>Pizza Boy © 2024</p>
     </footer>
-    
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+    <script>
+        function toggleLoginForm() {
+            const loginForm = document.getElementById('login-form');
+            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function login(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('login-form').style.display = 'none';
+                    document.getElementById('login-btn').style.display = 'none';
+                    document.getElementById('user-info').style.display = 'block';
+                    document.getElementById('user-name').textContent = username;
+                    sessionStorage.setItem('username', username);
+                    if (data.role === 0) {
+                        // Staff view
+                        document.getElementById('staff').style.display = 'inline';
+                    }
+                } else {
+                    alert('Login failed. Please try again.');
+                }
+            });
+        }
+
+        function logout() {
+            fetch('/logout', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('user-info').style.display = 'none';
+                        document.getElementById('login-btn').style.display = 'block';
+                        document.getElementById('staff').style.display = 'none';
+                        sessionStorage.removeItem('username');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function submitOrder() {
+            // Implement order submission logic here
+            console.log('Order submitted');
+        }
+    </script>
 </body>
 </html>

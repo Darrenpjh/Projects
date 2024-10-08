@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizza Boy - Staff Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="staff-header">
+        <h1>Pizza Boy - Staff Portal</h1>
+        <nav class="staff-nav">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="#pizza-types">Pizza Types</a></li>
+                <li><a href="#orders">Orders</a></li>
+            </ul>
+        </nav>
+        <div id="user-info">
+            <p>Welcome, <span id="user-name"></span>!</p>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="pizza-types">
+            <h2>Pizza Types</h2>
+            <table id="pizza-types-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Ingredients</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Pizza types will be populated here -->
+                </tbody>
+            </table>
+        </section>
+
+        <section id="orders">
+            <h2>Orders</h2>
+            <table id="orders-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Pizza Type ID</th>
+                        <th>Size</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Orders will be populated here -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>Pizza Boy © 2024</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchStaffInfo();
+            document.getElementById('user-name').textContent = sessionStorage.getItem('username');
+        });
+
+        function fetchStaffInfo() {
+            fetch('/staff_info')
+                .then(response => response.json())
+                .then(data => {
+                    populatePizzaTypesTable(data.pizza_types);
+                    populateOrdersTable(data.pizza_orders);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function populatePizzaTypesTable(pizzaTypes) {
+            const tableBody = document.querySelector('#pizza-types-table tbody');
+            tableBody.innerHTML = '';
+            pizzaTypes.forEach(pizza => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${pizza[0]}</td>
+                    <td>${pizza[1]}</td>
+                    <td>${pizza[2]}</td>
+                    <td>${pizza[3]}</td>
+                `;
+            });
+        }
+
+        function populateOrdersTable(orders) {
+            const tableBody = document.querySelector('#orders-table tbody');
+            tableBody.innerHTML = '';
+            orders.forEach(order => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${order[0]}</td>
+                    <td>${order[1]}</td>
+                    <td>${order[2]}</td>
+                    <td>$${order[3]}</td>
+                    <td>${order[4]}</td>
+                `;
+            });
+        }
+
+        function logout() {
+            fetch('/logout', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        sessionStorage.removeItem('username');
+                        window.location.href = '/';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
