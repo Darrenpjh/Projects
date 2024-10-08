@@ -1,7 +1,11 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from db_manager import DBManager
+import os
 
 app = Flask(__name__)
+
+app.secret_key = os.urandom(24)  # This generates a random secret key
+
 
 # Initialize your DBManager instance
 db_manager = DBManager(host='localhost', user='root', password='root', database='projectdb')
@@ -20,37 +24,63 @@ def index():
         
     return render_template('index.html', pizzas=pizzas)
 
-#
-
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
     
+    print(f"Attempting login with username: {username} and password: {password}")
+
+    if not username or not password:
+        return jsonify({'success': False, 'message': 'Username and password required'}), 400
+
+
     db_manager.connect()
     user = db_manager.db_login(username, password)
     db_manager.disconnect()
     
-    if user and isinstance(user, (list, tuple)):
+    if user:
+        print(f"User found: {user}")
         session['user_id'] = user[0]
         session['username'] = user[1]
         session['role'] = user[3]
-        return jsonify({'success': True, 'role': user[3]})
+        return jsonify({'success': True, 'role': user[3], 'redirect_url': '/staff' if user[3] == 0 else '/'})
     else:
-        return jsonify({'success': True})
+        print("Login Failed")
+        return jsonify({'success': False, 'message':'Invalid credentials'})
 
-@app.route('/staff_info')
+@app.route('/logout', methods=['POST'])
+def logout():
+    # Clear the session
+    session.pop('user_id', None)
+    session.pop('username', None)
+    session.pop('role', None)
+    
+    db_manager.disconnect()
+
+    # Return a success message or redirect to another page
+    return jsonify({'success': True, 'redirect_url': '/'})
+
+
+@app.route('/staff')
 def staff_info():
     # Check if the user is logged in and has a staff role (role == 0)
-    #if 'user_id' not in session or session['role'] != 0:
-    #    return jsonify({'error': 'Unauthorized access'}), 403
+    if 'user_id' not in session or session['role'] != 0:
+        return jsonify({'error': 'Unauthorized access'}), 403
 
     # Fetch pizza data
     db_manager.connect()
-    pizza_types = db_manager.execute_query("SELECT * FROM pizza_type") or []
-    pizza_orders = db_manager.execute_query("SELECT * FROM pizza_order") or []
-    db_manager.disconnect()
+
+    try:
+        pizza_types = db_manager.execute_query("SELECT * FROM pizza_type") or []
+        pizza_orders = db_manager.execute_query("SELECT * FROM pizza_order") or []
+    
+    except Exception as e:
+        return jsonify({'error': f"Failed to fetch data: {str(e)}"}), 500
+    
+    finally:
+        db_manager.disconnect()
     
     # Render the staff.html template and pass the pizza data
     return render_template('staff.html', pizza_types=pizza_types, pizza_orders=pizza_orders)

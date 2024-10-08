@@ -27,11 +27,14 @@
         </form>
     </div>
 
+    {%if 'username' in session %}
     <div id="user-info" style="display: none;">
-        <p>Welcome, <span id="user-name"></span>!</p>
+        <p>Welcome, {{ session['username']}}!</p>
         <a id="staff" href="/staff.html" style="display: none;">Staff Page</a>
         <button onclick="logout()">Logout</button>
     </div>
+
+    {% endif %}
 
     <section class="menu">
         <h2>Our Pizzas</h2>
@@ -65,6 +68,8 @@
             event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            
+            console.log('Login button clicked. Username:', username, 'Password:', password); // Debugging log
 
             fetch('/login', {
                 method: 'POST',
@@ -76,19 +81,22 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    document.getElementById('login-form').style.display = 'none';
-                    document.getElementById('login-btn').style.display = 'none';
-                    document.getElementById('user-info').style.display = 'block';
-                    document.getElementById('user-name').textContent = username;
-                    sessionStorage.setItem('username', username);
+                    alert('Login Successfull!')
                     if (data.role === 0) {
                         // Staff view
-                        document.getElementById('staff').style.display = 'inline';
+                        window.location.href = data.redirect_url;
+                    }
+                    else if(data.role == 1) {
+                        //Customer view
+                        window.location.href = data.redirect_url;
                     }
                 } else {
                     alert('Login failed. Please try again.');
                 }
-            });
+            })
+            .catch(error => {
+                console.error('Error during login:', error);
+            }); 
         }
 
         function logout() {
