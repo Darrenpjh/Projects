@@ -6,14 +6,13 @@ app = Flask(__name__)
 
 app.secret_key = os.urandom(24)  # This generates a random secret key
 
-
 # Initialize your DBManager instance
 db_manager = DBManager(host='localhost', user='root', password='root', database='projectdb')
 
 @app.route('/')
 def index():
     # Sample pizza data (in reality, you'd fetch this from your database)
-    query = """ SELECT t.name AS 'name', t.category AS 'category', t.ingredients AS 'ingredients', o.size AS 'size', o.price AS 'price' 
+    query = """ SELECT t.name AS 'name', t.category AS 'category', t.ingredients AS 'ingredients', o.size AS 'size', o.price AS 'price', t.image_path as 'image_path'
             FROM pizza_type t JOIN pizza_order o  
             ON t.pizza_type_id = o.pizza_type_id; """
     
@@ -88,7 +87,6 @@ def staff_info():
     # Render the staff.html template and pass the pizza data
     return render_template('staff.html', pizza_types=pizza_types, pizza_orders=pizza_orders)
 
-#
 
 @app.route('/submit_order', methods=['POST'])
 def submit_order():
@@ -113,5 +111,38 @@ def submit_order():
         print(f"Error processing order: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/delete_order/<int:order_id>/<int:order_detail>', methods=['POST'])
+def delete_order(order_id, order_detail):
+    try:
+        db_manager.connect()
+    except Exception as e:
+        print(f"Error in establishing connection: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    if db_manager.delete_orderrow(order_id, order_detail):
+        db_manager.disconnect()
+        return redirect(url_for('staff_info'))
+    else:
+        return "Order not found", 404
+    
+@app.route('/update_pizza/<pizza_id>', methods=['POST'])
+def update_pizza(pizza_id):
+
+    new_name = request.form['name']
+    new_category = request.form['category']
+    new_ingredients = request.form['ingre']
+
+    try:
+        db_manager.connect()
+    except Exception as e:
+        print(f"Error in establishing connection: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+    if db_manager.update_pizza(pizza_id, new_name=new_name, new_category=new_category, new_ingre=new_ingredients):
+        db_manager.disconnect()
+        return redirect(url_for('staff_info'))
+    else:
+        return "An error occurred while updating pizza", 404
+    
 if __name__ == '__main__':
     app.run(debug=True)

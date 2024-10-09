@@ -42,6 +42,9 @@
         <div id="pizza-list">
             {% for pizza in pizzas %}
             <div class="pizza-item">
+                <p>
+                    <img src="{{ pizza[5] }}" alt="{{ pizza[0] }}" width="200" height="200">
+                </p>
                 <h3>{{ pizza[0] }}</h3>
                 <p>Category: {{ pizza[1] }}</p>
                 <p>Ingredients: {{ pizza[2] }}</p>
