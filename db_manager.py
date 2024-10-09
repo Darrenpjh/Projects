@@ -66,6 +66,32 @@ class DBManager:
         print("No user found with this username")
         return None  # Username not found
 
+    def delete_orderrow(self, order_id, order_detail):
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("DELETE FROM order_info WHERE order_id = %s AND order_detail = %s", (order_id, order_detail))
+            self.connection.commit()
+            return cursor.rowcount > 0  # Return True if a row was deleted
+        except Error as e:
+            print(f"Error deleting data: {e}")
+            return False
+        finally:
+            cursor.close()
+    
+    def update_pizza(self, pizza_id, new_name, new_category, new_ingre):
+
+        update_query = """UPDATE pizza_type SET name=%s, category=%s, ingredients=%s WHERE pizza_type_id = %s"""
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(update_query,(new_name, new_category, new_ingre, pizza_id))
+            self.connection.commit()
+            return cursor.rowcount > 0  # Return True if a row was deleted
+        except Error as e:
+            print(f"Error updating: {e}")
+            return False
+        finally:
+            cursor.close()
+        
     def close_connection(self):
         if self.connection:
             try:
@@ -73,3 +99,4 @@ class DBManager:
                 print('Database connection closed.')
             except mysql.connector.Error as e:
                 print(f"Error closing database connection: {str(e)}")
+                
