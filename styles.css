@@ -45,6 +45,55 @@ nav ul li a:hover {
     text-decoration: underline;
 }
 
+.table-container {
+    position: relative;
+    width: 100%;
+}
+
+.delete-column {
+    text-align: right; /* Aligns the delete button to the right */
+}
+
+/* Delete button */
+.delete-button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.delete-button:hover {
+    background-color: darkred;
+}
+
+.delete-column {
+    text-align: right; /* Aligns the delete button to the right */
+}
+
+/* Update button */
+.update-button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.update-button:hover {
+    background-color: darkred;
+}
+
+.update-column {
+    text-align: right; /* Aligns the update button to the right */
+}
+
 /* Login form styles */
 #login-form {
     background-color: white;
