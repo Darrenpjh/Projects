@@ -7,21 +7,60 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # This generates a random secret key
 
 # Initialize your DBManager instance
-db_manager = DBManager(host='localhost', user='root', password='root', database='projectdb')
+db_manager = DBManager(host='localhost', user='root', password='1234', database='project')
+
 
 @app.route('/')
 def index():
-    # Sample pizza data (in reality, you'd fetch this from your database)
-    query = """ SELECT t.name AS 'name', t.category AS 'category', t.ingredients AS 'ingredients', o.size AS 'size', o.price AS 'price', t.image_path as 'image_path'
-            FROM pizza_type t JOIN pizza_order o  
-            ON t.pizza_type_id = o.pizza_type_id; """
-    
-    pizzas = db_manager.execute_query(query)
+    query = """
+    SELECT 
+        t.name,
+        t.category,
+        t.ingredients,
+        GROUP_CONCAT(
+            CONCAT(o.size, ':', o.price)
+            ORDER BY FIELD(o.size, 'S', 'M', 'L')
+        ) as size_prices,
+        t.image_path
+    FROM pizza_type t 
+    JOIN pizza_order o ON t.pizza_type_id = o.pizza_type_id
+    GROUP BY t.pizza_type_id
+    ORDER BY t.name;
+    """
 
-    if pizzas is None:
+    try:
+        db_manager.connect()
+        raw_pizzas = db_manager.execute_query(query)
+
+        # Debug print
+        print(f"Raw pizzas data: {raw_pizzas}")  # Add this line to check the data
+
+        # Process the raw data into a more usable format
         pizzas = []
-        
-    return render_template('index.html', pizzas=pizzas)
+        for pizza in raw_pizzas:
+            name, category, ingredients, size_prices, image_path = pizza
+
+            # Parse the size_prices string into a dictionary
+            sizes = {}
+            for size_price in size_prices.split(','):
+                size, price = size_price.split(':')
+                sizes[size] = float(price)
+
+            pizzas.append({
+                'name': name,
+                'category': category,
+                'ingredients': ingredients,
+                'sizes': sizes,
+                'image_path': image_path
+            })
+
+        return render_template('index.html', pizzas=pizzas)
+    except Exception as e:
+        print(f"Error fetching pizza data: {e}")
+        return render_template('index.html', pizzas=[], error="Unable to load pizza menu")
+    finally:
+        db_manager.disconnect()
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -90,36 +129,38 @@ def staff_info():
 
 @app.route('/submit_order', methods=['POST'])
 def submit_order():
-    order_items = request.form
-    order_details = []
-
-    for pizza_id, quantity in order_items.items():
-        if quantity.isdigit() and int(quantity) > 0:
-            order_details.append({'pizza_id': pizza_id, 'quantity': int(quantity)})
-
-    if not order_details:
-        return jsonify({'success': False, 'message': 'No valid items ordered'}), 400
+    order_items = request.json
+    if not order_items:
+        return jsonify({'success': False, 'message': 'No items in the order'}), 400
 
     try:
         db_manager.connect()
-        for order_item in order_details:
-            query = "INSERT INTO order_info (pizza_id, quantity) VALUES (%s, %s)"
-            db_manager.execute_query(query, (order_item['pizza_id'], order_item['quantity']))
-        db_manager.disconnect()
-        return jsonify({'success': True})
+        for item in order_items:
+            pizza_name = item['pizza_name']
+            size = item['size']
+            quantity = item['quantity']
+
+            if quantity <= 0:
+                continue
+
+            db_manager.add_order_info(pizza_name, size, quantity)
+
+        return jsonify({'success': True, 'message': 'Order submitted successfully'})
     except Exception as e:
         print(f"Error processing order: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db_manager.disconnect()
 
-@app.route('/delete_order/<int:order_id>/<int:order_detail>', methods=['POST'])
-def delete_order(order_id, order_detail):
+@app.route('/delete_order/<int:order_id>', methods=['POST'])
+def delete_order(order_id):
     try:
         db_manager.connect()
     except Exception as e:
         print(f"Error in establishing connection: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
     
-    if db_manager.delete_orderrow(order_id, order_detail):
+    if db_manager.delete_orderrow(order_id):
         db_manager.disconnect()
         return redirect(url_for('staff_info'))
     else:

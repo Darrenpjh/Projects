@@ -85,7 +85,7 @@
                             <td>{{order[2]}}</td>
                             <td>{{order[3]}}</td>
                             <td class="delete-column">
-                                <form action="{{ url_for('delete_order', order_id=order[1], order_detail=order[0]) }}" method="post">
+                                <form action="{{ url_for('delete_order', order_id=order[1]) }}" method="post">
                                     <button type="submit" class="delete-button">Delete</button>
                                 </form>
                             </td>
