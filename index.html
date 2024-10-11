@@ -17,7 +17,7 @@
             </div>   
         {% else %}
             <div id="login-section" style="display: block;">    
-                <button id="login-btn" onclick="toggleLoginForm()">Login</button>
+                <button id="login-btn" class="login-btn" onclick="toggleLoginForm()">Login</button>
             </div>
         {% endif %}
         
@@ -55,7 +55,9 @@
         </div>
         {% endfor %}
     </div>
-    <button onclick="submitOrder()">Submit Order</button>
+    <div class="submit-column">
+        <button class="submit-btn" onclick="submitOrder()">Submit Order</button>
+    </div>
 </section>
 
 

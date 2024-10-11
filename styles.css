@@ -44,6 +44,41 @@ nav ul li a {
 nav ul li a:hover {
     text-decoration: underline;
 }
+/* Login button */
+.login-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.login-btn:hover {
+    background-color: darkred;
+}
+
+/* Submit button */
+.submit-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.submit-btn:hover {
+    background-color: darkred;
+}
+
+.submit-column{
+    text-align: center;
+}
 
 .table-container {
     position: relative;
