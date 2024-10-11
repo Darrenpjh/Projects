@@ -16,7 +16,7 @@ PizzaBoiApp/
 │
 ├── db_manager.py       # Communicating with the database
 ├── app.py              # Main application file (Flask server)
-├── /Templates          # HTML templates directory
+├── /templates          # HTML templates directory
 │   ├── index.html      # Main page for customers
 │   └── staff.html      # Staff management page
 ├── /static             # Static files directory
