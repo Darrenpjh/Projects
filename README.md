@@ -32,3 +32,4 @@ PizzaBoiApp/
 │   └── /images         # Images directory
 │       └── /pizzas     # Extract pizzas.zip here
 └── README.md           # Project documentation (this file)
+```
