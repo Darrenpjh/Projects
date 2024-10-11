@@ -9,7 +9,7 @@ This is a web-based pizza ordering application where staff and customers can int
 ```python
 # In line 10
 db_manager = DBManager(host='localhost', user=<database username>, password=<database password>, database=<the database that was imported into>)
-
+```
 ## User Accounts
 
 | Username  | Password  | Role     | Permissions                          |
