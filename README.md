@@ -8,6 +8,14 @@ This is a web-based pizza ordering application where staff and customers can int
 In line 10:
 db_manager = DBManager(host='localhost', user=<database username>, password=<database password>, database=<the database that was imported into>)
 
+## User account ##
+Username:root
+Password:root
+Role: Staff (Able to access staff dashboard)
+
+Username:tom
+password:tom
+Role: Customer (Unable to access staff dashboard)
 
 ## Project Structure
 
