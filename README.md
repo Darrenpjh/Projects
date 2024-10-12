@@ -9,7 +9,7 @@ This is a web-based pizza ordering application where staff and customers can int
 
    ```bash
    git clone https://github.com/Darrenpjh/Projects
-   cd Project
+   cd Projects
    ```
 
 2. **Install the required libraries:**
