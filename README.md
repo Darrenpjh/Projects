@@ -5,25 +5,70 @@ This is a web-based pizza ordering application where staff and customers can int
 
 ## Setup Instructions
 
-## Import Database using datadump command
-Create Database within mysql:
-CREATE DATABASE <new_database>;
-exit mysql and go back to terminal
-Enter this command line:
-mysql -u username -p new_database < datadump.sql
+1. **Clone the repository:**
 
-**Please change the following in `app.py` accordingly:**
-```python
-# In line 10
-db_manager = DBManager(host='localhost', user=<database username>, password=<database password>, database=<the database that was imported into>)
-eg db_manager = DBManager(host='localhost', user='root', password='1234', database='project')
-```
-## User Accounts 
+   ```bash
+   git clone https://github.com/Darrenpjh/Projects
+   cd Project
+   ```
+
+2. **Install the required libraries:**
+
+   ```bash
+   pip install Flask PyMySQL mysql-connector-python
+   ```
+
+3. **Import the Database:**
+
+   - Create a new database within MySQL:
+     ```sql
+     CREATE DATABASE <new_database>;
+     ```
+
+   - Exit MySQL and return to the terminal.
+
+   - Run the following command to import the database dump:
+     ```bash
+     mysql -u username -p new_database < datadump.sql
+     ```
+
+4. **Update `app.py`:**
+
+   - Modify line 10 of `app.py` to configure your database credentials:
+     ```python
+     db_manager = DBManager(host='localhost', user=<database username>, password=<database password>, database=<the database that was imported into>)
+     ```
+     Example:
+     ```python
+     db_manager = DBManager(host='localhost', user='root', password='1234', database='project')
+     ```
+
+5. **Run the Application:**
+
+   - Start the Flask development server:
+     ```bash
+     python app.py
+     ```
+
+   - Open a browser and navigate to `http://localhost:5000` to access the app.
+
+## User Accounts
 
 | Username  | Password  | Role        | Permissions                          |
 |-----------|-----------|-------------|--------------------------------------|
 | root      | root      | Staff    (0)| Able to access staff dashboard       |
 | tom       | tom       | Customer (1)| Unable to access staff dashboard     |
+
+## Required Libraries
+
+- Flask
+- PyMySQL or MySQL Connector Python (sql-connector-python)
+- mysql-connector-python
+
+To install the libraries, run:
+```bash
+pip install Flask PyMySQL mysql-connector-python
+```
 
 ## Project Structure
 
