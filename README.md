@@ -50,7 +50,7 @@ This is a web-based pizza ordering application where staff and customers can int
      python app.py
      ```
 
-   - Open a browser and navigate to `http://localhost:5000` to access the app.
+   - Open a browser and navigate to `http://127.0.0.1:5000` to access the app.
 
 ## User Accounts
 
