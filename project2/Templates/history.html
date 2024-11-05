@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pizza Boy - Order History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="staff-header">
+        <h1>Pizza Boy - Order History</h1>
+        <nav class="staff-nav">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/staff">Staff Dashboard</a></li>
+                <li><a href="/history">Order History</a></li>
+            </ul>
+        </nav>
+        <div id="user-info">
+            <p>Welcome, {{session['username']}}!</p>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="history-section">
+            <h2>Completed Orders</h2>
+            <form method="POST" action="/history">
+                <input type="text" name="order_id" placeholder="Enter Order ID" required>
+                <button type="submit">Search</button>
+            </form>
+            {% if error %}
+                <p style="color: red;">{{ error }}</p>
+            {% endif %}
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Pizza Name</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>{{ order.order_id }}</td>
+                        <td>{{ order.pizza_name }}</td>
+                        <td>{{ order.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer>
+        <p>Pizza Boy © 2024</p>
+    </footer>
+
+    <script>
+        function searchOrders(event) {
+            event.preventDefault();
+            const date = document.getElementById('search-date').value;
+            if (date) {
+                window.location.href = `/history?date=${date}`;
+            }
+            return false;
+        }
+
+        function logout() {
+            fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
