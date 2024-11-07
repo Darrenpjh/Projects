@@ -113,17 +113,15 @@
     <header>
         <h1>Pizza Boy</h1>
 
-        {%if 'username' in session %}
-            <div id="user-info" style="display: block;">
-                <p>Welcome, {{ session['username']}}!</p>
-                <button onclick="logout()">Logout</button>
-            </div>
-        {% else %}
-            <div id="login-section" class="auth-container">
-                <button id="login-btn" class="login-btn" onclick="toggleLoginForm()">Login</button>
-                <button id="signup-btn" class="signup-btn" onclick="toggleSignupForm()">Sign Up</button>
-            </div>
-        {% endif %}
+        <div id="user-info" style="display: none;">
+            <p>Welcome, <span id="display-username"></span>!</p>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div id="login-section" class="auth-container">
+            <button id="login-btn" class="login-btn" onclick="toggleLoginForm()">Login</button>
+            <button id="signup-btn" class="signup-btn" onclick="toggleSignupForm()">Sign Up</button>
+        </div>
     </header>
 
     <div id="login-form" style="display: none;">
@@ -229,8 +227,9 @@
                 if (data.success) {
                     alert('Sign up successful! Please log in.');
                     toggleSignupForm();
+                    toggleLoginForm();
                 } else {
-                    alert(data.message);
+                    alert(data.message || 'Sign up failed. Please try again.');
                 }
             })
             .catch(error => {
@@ -252,30 +251,40 @@
                 body: JSON.stringify({ username, password }),
             })
             .then(response => {
-                if (response.ok) {
-                    return response.json();
-                } else {
-                    throw new Error('Login failed');
-                }
+                console.log('Response status:', response.status);
+                return response.json();
             })
             .then(data => {
+                console.log('Login response data:', data);
+
                 if (data.success) {
                     alert('Login Successful!');
+                    sessionStorage.setItem('username', data.username);
+
+                    // Hide login form
+                    document.getElementById('login-form').style.display = 'none';
+                    
                     if (data.role === 0) {
+                        console.log('Redirecting to staff area:', data.redirect_url);
                         window.location.href = data.redirect_url;
                     } else if (data.role === 1) {
-                        document.getElementById("login-section").style.display = 'none';
-                        document.getElementById("user-info").style.display = 'block';
-                        document.getElementById("user-name").textContent = data.username;
-                        window.location.href = data.redirect_url;
+                        console.log('Displaying user info for regular member:', data.username);
+                        // Hide login section and show user info
+                        document.getElementById('login-section').style.display = 'none';
+                        document.getElementById('user-info').style.display = 'block';
+                        document.getElementById('display-username').textContent = data.username;
+                        
+                        if (data.redirect_url && data.redirect_url !== '/') {
+                            window.location.href = data.redirect_url;
+                        }
                     }
                 } else {
-                    alert('Login failed. Please try again.');
+                    alert('Login failed: ' + (data.message || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error during login:', error);
-                alert('An error occurred during login. Please try again later.');
+                alert('An error occurred during login. Please try again.');
             });
         }
 
@@ -284,14 +293,16 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.href = data.redirect_url;
-                        document.getElementById('user-info').style.display = 'none';
-                        document.getElementById('login-btn').style.display = 'inline-block';
-                        document.getElementById('staff').style.display = 'none';
                         sessionStorage.removeItem('username');
+                        document.getElementById('user-info').style.display = 'none';
+                        document.getElementById('login-section').style.display = 'flex';
+                        window.location.href = data.redirect_url;
                     }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred during logout.');
+                });
         }
 
         function submitOrder() {
@@ -340,6 +351,16 @@
                 alert('An error occurred while submitting the order. Please try again.');
             });
         }
+
+        // Check if user is already logged in on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const username = sessionStorage.getItem('username');
+            if (username) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('display-username').textContent = username;
+            }
+        });
     </script>
 </body>
 </html>
