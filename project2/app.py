@@ -86,51 +86,6 @@ def staff_info():
     finally:
         db_manager.disconnect()
 
-""""
-@app.route('/history')
-def order_history():
-    if 'user_id' not in session or session['role'] != 0:
-        return jsonify({'error': 'Unauthorized access'}), 403
-
-    search_date = request.args.get('date')
-
-    db_manager.connect()
-    try:
-        # Get completed orders (status 1)
-        completed_orders = db_manager.get_completed_orders(search_date)
-        return render_template('history.html', orders=completed_orders)
-    except Exception as e:
-        return jsonify({'error': f"Failed to fetch history: {str(e)}"}), 500
-    finally:
-        db_manager.disconnect()
-"""
-
-
-@app.route('/history', methods=['GET', 'POST'])
-def order_history():
-    # Establish connection
-    db_manager.connect()
-
-    if request.method == 'POST':
-        order_id = request.form.get('order_id')
-
-        if order_id:
-            try:
-                order_id = int(order_id)
-            except ValueError:
-                return render_template('history.html', orders=[], error="Invalid order ID")
-
-            # Fetch the order by order_id where status is 1 (completed)
-            order = db_manager.db.orders.find_one({'order_id': order_id, 'status': 1})
-            orders = [order] if order else []
-        else:
-            # Fetch all completed orders
-            orders = list(db_manager.db.orders.find({'status': 1}))
-    else:
-        # Fetch all completed orders
-        orders = list(db_manager.db.orders.find({'status': 1}))
-
-    return render_template('history.html', orders=orders)
 
 @app.route('/complete_order/<order_id>', methods=['POST'])
 def complete_order(order_id):
@@ -148,6 +103,50 @@ def complete_order(order_id):
     finally:
         db_manager.disconnect()
 
+
+@app.route('/history', methods=['GET', 'POST'])
+def order_history():
+    db_manager.connect()
+    orders = []
+    performance_results = None
+
+    try:
+        if request.method == 'POST':
+            order_id = request.form.get('order_id')
+            if order_id:
+                try:
+                    order_id = int(order_id)
+                    # Get performance comparison
+                    performance_results = db_manager.compare_search_performance(order_id=order_id)
+
+                    # Use the results from the indexed search
+                    orders = performance_results['order_id_search']['indexed']['result']
+                except ValueError:
+                    return render_template('history.html', orders=[], error="Invalid order ID")
+            else:
+                # Get all completed orders
+                performance_results = db_manager.compare_search_performance(status=1)
+                orders = performance_results['status_search']['indexed']['result']
+        else:
+            # For GET requests, get all completed orders with performance comparison
+            performance_results = db_manager.compare_search_performance(status=1)
+            orders = performance_results['status_search']['indexed']['result']
+
+        # Retrieve pizza details for each order
+        for order in orders:
+            pizza = db_manager.db.pizza.find_one({'pizza_id': order['pizza_id']})
+            if pizza:
+                pizza_type = db_manager.db.pizza_types.find_one({'pizza_type_id': pizza['pizza_type_id']})
+                if pizza_type:
+                    order['pizza_name'] = pizza_type['name']
+
+    except Exception as e:
+        print(f"Error fetching order history: {e}")
+        return render_template('history.html', orders=[], error="Failed to retrieve completed orders.")
+    finally:
+        db_manager.disconnect()
+
+    return render_template('history.html', orders=orders, performance=performance_results)
 
 @app.route('/submit_order', methods=['POST'])
 def submit_order():

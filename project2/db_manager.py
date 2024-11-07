@@ -1,6 +1,8 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from datetime import datetime
+import time
+import psutil
+import os
 
 
 class DBManager:
@@ -10,18 +12,13 @@ class DBManager:
         self.host = host
         self.port = port
         self.database = database
-        #self.background_queue = Queue()
-        #self._start_background_worker()
-
-        #create Indexes when initializing
-        #self._setup_indexes()
-
 
     def connect(self):
         """Establish a connection to MongoDB."""
         try:
             self.client = MongoClient(f'mongodb://{self.host}:{self.port}/')
             self.db = self.client[self.database]
+            self._setup_indexes()  # Setup indexes on connection
             print("Connected to MongoDB successfully")
         except Exception as e:
             print(f"Error connecting to MongoDB: {e}")
@@ -30,7 +27,7 @@ class DBManager:
 
     def disconnect(self):
         """Close the connection to MongoDB."""
-        if  self.client:
+        if self.client:
             self.client.close()
             self.client = None
             self.db = None
@@ -43,17 +40,78 @@ class DBManager:
         self.db.orders.create_index([('order_id', 1)])  # Index on order_id
         self.db.orders.create_index([('status', 1), ('order_id', 1)])  # Compound index
 
-    def search_pending_orders(self, status=0, limit=10):
-        """
-        Search for pending orders with the given status.
+    def measure_performance(self, func):
+        """Measure execution time and memory usage of a function."""
+        process = psutil.Process(os.getpid())
 
-        :param status: The order status to filter by (default is 0 for pending).
-        :param limit: The maximum number of orders to return.
-        :return: List of pending orders.
-        """
-        # Query the orders collection for pending orders
-        pending_orders = list(self.db.orders.find({'status': status}).limit(limit))
-        return pending_orders
+        # Memory before
+        mem_before = process.memory_info().rss / 1024 / 1024  # Convert to MB
+
+        # Time measurement
+        start_time = time.time()
+        result = func()
+        end_time = time.time()
+
+        # Memory after
+        mem_after = process.memory_info().rss / 1024 / 1024  # Convert to MB
+
+        return {
+            'execution_time': end_time - start_time,
+            'memory_used': mem_after - mem_before,
+            'result': result
+        }
+
+    def search_order_by_id_indexed(self, order_id):
+        """Search for an order using the indexed order_id field."""
+
+        def search():
+            return list(self.db.orders.find({'order_id': order_id}))
+
+        return self.measure_performance(search)
+
+    def search_order_by_id_non_indexed(self, order_id):
+        """Search for an order without using the index."""
+
+        def search():
+            # Hint forces MongoDB to NOT use the index
+            return list(self.db.orders.find({'order_id': order_id}).hint([('$natural', 1)]))
+
+        return self.measure_performance(search)
+
+    def search_by_status_indexed(self, status):
+        """Search orders by status using the index."""
+
+        def search():
+            return list(self.db.orders.find({'status': status}))
+
+        return self.measure_performance(search)
+
+    def search_by_status_non_indexed(self, status):
+        """Search orders by status without using the index."""
+
+        def search():
+            # Hint forces MongoDB to NOT use the index
+            return list(self.db.orders.find({'status': status}).hint([('$natural', 1)]))
+
+        return self.measure_performance(search)
+
+    def compare_search_performance(self, order_id=None, status=None):
+        """Compare performance between indexed and non-indexed searches."""
+        results = {}
+
+        if order_id is not None:
+            results['order_id_search'] = {
+                'indexed': self.search_order_by_id_indexed(order_id),
+                'non_indexed': self.search_order_by_id_non_indexed(order_id)
+            }
+
+        if status is not None:
+            results['status_search'] = {
+                'indexed': self.search_by_status_indexed(status),
+                'non_indexed': self.search_by_status_non_indexed(status)
+            }
+
+        return results
 
     def db_login(self, username, password):
         """Authenticate user login."""
@@ -64,6 +122,7 @@ class DBManager:
                 'username': user['username'],
                 'role': user['role']
             }
+        print("User not found")
         return None
 
     def get_all_pizzas(self):
@@ -102,15 +161,11 @@ class DBManager:
 
     def get_pizza_id_by_name_and_size(self, full_name, size):
         """Fetch the pizza_id based on pizza type name and size."""
-
-        # First, get the pizza_type_id from the pizza_types collection
         pizza_type = self.db.pizza_types.find_one({'name': full_name})
         if not pizza_type:
             raise ValueError(f"Pizza type '{full_name}' not found in the pizza_types collection.")
 
         pizza_type_id = pizza_type['pizza_type_id']
-
-        # Then, get the pizza_id from the pizza collection using pizza_type_id and size
         pizza = self.db.pizza.find_one({'pizza_type_id': pizza_type_id, 'size': size})
         if pizza:
             return pizza['pizza_id']
@@ -120,7 +175,7 @@ class DBManager:
     def get_pending_orders(self):
         """Get all pending orders with pizza details."""
         pipeline = [
-            {'$match': {'status': 0}},  # Get only pending orders
+            {'$match': {'status': 0}},
             {
                 '$lookup': {
                     'from': 'pizza',
@@ -165,36 +220,9 @@ class DBManager:
         """Mark an order as complete."""
         result = self.db.orders.update_one(
             {'_id': ObjectId(order_id)},
-            {
-                '$set': {
-                    'status': 1
-                }
-            }
+            {'$set': {'status': 1}}
         )
         return result.modified_count > 0
-
-    def get_completed_orders(self, search_date=None):
-        """Get completed orders with optional date filter."""
-        query = {'status': 1}
-
-        completed_orders = self.db.orders.find(query).sort('completed_at', -1)
-
-        result = []
-        for order in completed_orders:
-            # Get pizza details
-            pizza = self.db.pizza.find_one({'pizza_id': order['pizza_id']})
-            if pizza:
-                pizza_type = self.db.pizza_types.find_one({'pizza_type_id': pizza['pizza_type_id']})
-                if pizza_type:
-                    result.append({
-                        'order_id': order['order_id'],
-                        'pizza_name': pizza_type['name'],
-                        'quantity': order['quantity'],
-                        #'total_price': float(pizza['price'] * order['quantity']),
-                        #'completed_at': order['completed_at']
-                    })
-
-        return result
 
     def delete_orderrow(self, order_id):
         """Delete an order by ID."""
@@ -205,7 +233,7 @@ class DBManager:
         """Update pizza type information."""
         try:
             result = self.db.pizza_types.update_one(
-                {'pizza_type_id': pizza_type_id},  # Remove the int() conversion
+                {'pizza_type_id': pizza_type_id},
                 {
                     '$set': {
                         'name': new_name,
