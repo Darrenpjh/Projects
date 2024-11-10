@@ -1,5 +1,6 @@
 import mysql.connector
 from mysql.connector import Error
+import time
 
 class DBManager:
     def __init__(self, host, user, password, database):
@@ -8,6 +9,7 @@ class DBManager:
         self.password = password
         self.database = database
         self.connection = None
+        self._setup_indexes()
 
     def connect(self):
         """Establish a connection to the database."""
@@ -19,7 +21,7 @@ class DBManager:
                     password=self.password,
                     database=self.database,
                     charset="utf8mb4",
-                    collation = "utf8mb4_general_ci"
+                    collation="utf8mb4_general_ci"
                 )
             except Error as e:
                 print(f"Error while connecting to MySQL: {e}")
@@ -49,6 +51,25 @@ class DBManager:
             self.connection.close()
             print("Database connection closed.")
 
+    def _setup_indexes(self):
+        try:
+            self.connect()
+            queries = [
+                "DROP INDEX IF EXISTS idx_order_id ON order_info",
+                "DROP INDEX IF EXISTS idx_status ON order_info",
+                "DROP INDEX IF EXISTS idx_pizza_id ON order_info",
+                "CREATE INDEX idx_order_id ON order_info (order_id, status)",
+                "CREATE INDEX idx_status ON order_info (status, order_id)",
+                "CREATE INDEX idx_pizza_id ON order_info (pizza_id, status)"
+            ]
+            for query in queries:
+                self.execute_query(query)
+            print("Indexes setup completed successfully")
+        except Error as e:
+            print(f"Error setting up indexes: {e}")
+        finally:
+            self.disconnect()
+
     def execute_query(self, query, params=()):
         """Execute a query with connection check and return results if it's a SELECT query."""
         if not self.ensure_connection():
@@ -63,7 +84,7 @@ class DBManager:
                 return cursor.fetchall()
             else:
                 self.connection.commit()
-                return None  # For non-SELECT queries
+                return None
         except Error as e:
             print(f"Error while executing query: {e}")
             if not self.connection.is_connected():
@@ -77,7 +98,6 @@ class DBManager:
             if cursor:
                 cursor.close()
 
-
     def db_login(self, username, password):
         """Execute a SELECT query and return the results if matched."""
         query = "SELECT user_id, username, password, role FROM login_info WHERE username=%s"
@@ -85,42 +105,30 @@ class DBManager:
 
         if user_data:
             db_user_id, db_username, db_password, db_role = user_data[0]
-            print(f"Found user: {db_username}, role: {db_role}")  # Debugging
-
-            # Assuming you're using plain-text password comparison
             if db_password == password:
                 return (db_user_id, db_username, db_password, db_role)
-            else:
-                print("Password Mismatched")
-                return None  # Password does not match
-        print("No user found with this username")
-        return None  # Username not found
+        return None
 
     def delete_orderrow(self, order_id):
         try:
             cursor = self.connection.cursor()
-            cursor.execute("DELETE FROM order_info WHERE order_id = %s ", (order_id,))
+            cursor.execute("DELETE FROM order_info WHERE order_id = %s", (order_id,))
             self.connection.commit()
-            return cursor.rowcount > 0  # Return True if a row was deleted
+            return cursor.rowcount > 0
         except Error as e:
             print(f"Error deleting data: {e}")
             return False
         finally:
             cursor.close()
-    
-    def update_pizza(self, pizza_id, new_name, new_category, new_ingre):
 
-        update_query = """UPDATE pizza_type SET name=%s, category=%s, ingredients=%s WHERE pizza_type_id = %s"""
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(update_query,(new_name, new_category, new_ingre, pizza_id))
-            self.connection.commit()
-            return cursor.rowcount > 0  # Return True if a row was deleted
-        except Error as e:
-            print(f"Error updating: {e}")
-            return False
-        finally:
-            cursor.close()
+    def update_pizza(self, pizza_id, new_name, new_category, new_ingredients):
+        """Update pizza details."""
+        query = """
+        UPDATE pizza_type 
+        SET name = %s, category = %s, ingredients = %s 
+        WHERE pizza_type_id = %s
+        """
+        return self.execute_query(query, (new_name, new_category, new_ingredients, pizza_id))
 
     def get_pizza_id_by_name_and_size(self, pizza_name, size):
         """Fetch the pizza_id based on pizza_type.name and pizza_order.size."""
@@ -132,7 +140,7 @@ class DBManager:
         """
         result = self.execute_query(query, (pizza_name, size))
         if result:
-            return result[0][0]  # Return the pizza_id
+            return result[0][0]
         else:
             raise ValueError(f"Pizza '{pizza_name}' with size '{size}' not found in database.")
 
@@ -140,12 +148,12 @@ class DBManager:
         """Add a detail to an order by fetching pizza_id from pizza_name and size."""
         try:
             pizza_id = self.get_pizza_id_by_name_and_size(pizza_name, size)
-            query = "INSERT INTO order_info (pizza_id, quantity) VALUES (%s, %s)"
+            query = "INSERT INTO order_info (pizza_id, quantity, status) VALUES (%s, %s, 0)"
             self.execute_query(query, (pizza_id, quantity))
-            self.connection.commit()  # Commit the transaction
+            self.connection.commit()
             print(f"Order info added successfully for {pizza_name}, size {size}.")
         except Error as e:
-            self.connection.rollback()  # Rollback in case of error
+            self.connection.rollback()
             print(f"Error adding order info: {e}")
             raise e
 
@@ -159,6 +167,62 @@ class DBManager:
             print(f"Error adding user: {e}")
             return False
 
+    def update_order_status(self, order_id, status):
+        """Update the status of an order."""
+        query = "UPDATE order_info SET status = %s WHERE order_id = %s"
+        try:
+            self.execute_query(query, (status, order_id))
+            self.connection.commit()
+            return True
+        except Error as e:
+            print(f"Error updating order status: {e}")
+            return False
+
+    def get_completed_orders(self):
+        """Get all completed orders (status = 1)."""
+        query = """
+        SELECT oi.order_id, pt.name, oi.quantity
+        FROM order_info oi
+        JOIN pizza_order po ON oi.pizza_id = po.pizza_id
+        JOIN pizza_type pt ON po.pizza_type_id = pt.pizza_type_id
+        WHERE oi.status = 1
+        ORDER BY oi.order_id DESC
+        """
+        return self.execute_query(query)
+
+    def search_completed_orders(self, order_id):
+        query = """
+        SELECT oi.order_id, pt.name, oi.quantity
+        FROM order_info oi
+        USE INDEX (idx_order_id)
+        JOIN pizza_order po ON oi.pizza_id = po.pizza_id
+        JOIN pizza_type pt ON po.pizza_type_id = pt.pizza_type_id
+        WHERE oi.status = 1 AND oi.order_id = %s
+        """
+        return self.execute_query(query, (order_id,))
+
+    def search_completed_orders_non_indexed(self, order_id):
+        query = """
+        SELECT oi.order_id, pt.name, oi.quantity
+        FROM order_info oi IGNORE INDEX (idx_order_id, idx_status, idx_pizza_id)
+        JOIN pizza_order po ON oi.pizza_id = po.pizza_id
+        JOIN pizza_type pt ON po.pizza_type_id = pt.pizza_type_id
+        WHERE oi.status = 1 AND oi.order_id = %s
+        """
+        return self.execute_query(query, (order_id,))
+
+    def start_transaction(self):
+        """Start a new transaction."""
+        self.connection.start_transaction()
+
+    def commit_transaction(self):
+        """Commit the current transaction."""
+        self.connection.commit()
+
+    def rollback_transaction(self):
+        """Rollback the current transaction."""
+        self.connection.rollback()
+
     def close_connection(self):
         if self.connection:
             try:
@@ -166,4 +230,3 @@ class DBManager:
                 print('Database connection closed.')
             except mysql.connector.Error as e:
                 print(f"Error closing database connection: {str(e)}")
-                

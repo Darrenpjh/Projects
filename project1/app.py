@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from db_manager import DBManager
 import os
+import psutil
+import time
 
 app = Flask(__name__)
 
@@ -9,6 +11,7 @@ app.secret_key = os.urandom(24)  # This generates a random secret key
 # Initialize your DBManager instance
 db_manager = DBManager(host='localhost', user='root', password='1234', database='project')
 
+staff_modification_lock = {"staff_id": None, "timestamp" : None}
 
 @app.route('/')
 def index():
@@ -27,8 +30,6 @@ def index():
         db_manager.connect()
         raw_pizzas = db_manager.execute_query(query)
 
-        # Debug print
-        print(f"Raw pizzas data: {raw_pizzas}")  # Add this line to check the data
 
         # Process the raw data into a more usable format
         pizzas = []
@@ -101,54 +102,36 @@ def logout():
 
 @app.route('/staff')
 def staff_info():
-    # Check if the user is logged in and has a staff role (role == 0)
     if 'user_id' not in session or session['role'] != 0:
         return jsonify({'error': 'Unauthorized access'}), 403
 
-    # Fetch pizza data
-    db_manager.connect()
-
-    try:
-        pizza_types = db_manager.execute_query("SELECT * FROM pizza_type") or []
-        pizza_orders = db_manager.execute_query("SELECT * FROM order_info") or []
-        earnings_data = calculate_earnings()
-        total_earnings = sum(row[4] for row in earnings_data) if earnings_data else 0
-    except Exception as e:
-        return jsonify({'error': f"Failed to fetch data: {str(e)}"}), 500
-    
-    finally:
-        db_manager.disconnect()
-    
-    # Render the staff.html template and pass the pizza data
-    return render_template('staff.html', pizza_types=pizza_types, pizza_orders=pizza_orders,
-                           earnings_data=earnings_data,total_earnings=total_earnings)
-
-
-@app.route('/submit_order', methods=['POST'])
-def submit_order():
-    order_items = request.json
-    if not order_items:
-        return jsonify({'success': False, 'message': 'No items in the order'}), 400
-
     try:
         db_manager.connect()
-        for item in order_items:
-            pizza_name = item['pizza_name']
-            size = item['size']
-            quantity = item['quantity']
-
-            if quantity <= 0:
-                continue
-
-            db_manager.add_order_info(pizza_name, size, quantity)
-
-        return jsonify({'success': True, 'message': 'Order submitted successfully'})
+        # Get pending orders
+        orders_query = """
+        SELECT oi.order_id, pt.name, oi.quantity, oi.status
+        FROM order_info oi
+        JOIN pizza_order po ON oi.pizza_id = po.pizza_id
+        JOIN pizza_type pt ON po.pizza_type_id = pt.pizza_type_id
+        WHERE oi.status = 0
+        ORDER BY oi.order_id;
+        """
+        # Get pizza types for editing
+        pizzas_query = """
+        SELECT pt.pizza_type_id, pt.name, pt.category, pt.ingredients
+        FROM pizza_type pt
+        ORDER BY pt.name;
+        """
+        pizza_orders = db_manager.execute_query(orders_query)
+        pizza_types = db_manager.execute_query(pizzas_query)
+        return render_template('staff.html',
+                             pizza_orders=pizza_orders,
+                             pizza_types=pizza_types)
     except Exception as e:
-        print(f"Error processing order: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'error': f"Failed to fetch data: {str(e)}"}), 500
     finally:
         db_manager.disconnect()
-
+"""
 @app.route('/delete_order/<int:order_id>', methods=['POST'])
 def delete_order(order_id):
     try:
@@ -162,25 +145,24 @@ def delete_order(order_id):
         return redirect(url_for('staff_info'))
     else:
         return "Order not found", 404
-    
-@app.route('/update_pizza/<pizza_id>', methods=['POST'])
+"""
+
+
+@app.route('/update_pizza/<int:pizza_id>', methods=['POST'])
 def update_pizza(pizza_id):
-
-    new_name = request.form['name']
-    new_category = request.form['category']
-    new_ingredients = request.form['ingre']
-
     try:
         db_manager.connect()
+        new_name = request.form.get('name')
+        new_category = request.form.get('category')
+        new_ingredients = request.form.get('ingredients')
+
+        if db_manager.update_pizza(pizza_id, new_name, new_category, new_ingredients):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'message': 'Failed to update pizza'})
     except Exception as e:
-        print(f"Error in establishing connection: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
-    
-    if db_manager.update_pizza(pizza_id, new_name=new_name, new_category=new_category, new_ingre=new_ingredients):
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
         db_manager.disconnect()
-        return redirect(url_for('staff_info'))
-    else:
-        return "An error occurred while updating pizza", 404
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -199,6 +181,179 @@ def signup():
             return jsonify({'success': False, 'message': 'Failed to create user'}), 500
     finally:
         db_manager.disconnect()
+
+
+@app.route('/complete_order/<int:order_id>', methods=['POST'])
+def complete_order(order_id):
+    try:
+        db_manager.connect()
+        if db_manager.update_order_status(order_id, 1):  # 1 for completed
+            return redirect(url_for('staff_info'))
+        return jsonify({'success': False, 'message': 'Order not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        db_manager.disconnect()
+
+@app.route('/delete_order/<int:order_id>', methods=['POST'])
+def delete_order(order_id):
+    try:
+        db_manager.connect()
+        if db_manager.delete_orderrow(order_id):
+            return redirect(url_for('staff_info'))
+        return jsonify({'success': False, 'message': 'Order not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        db_manager.disconnect()
+
+@app.route('/start_transaction', methods=['POST'])
+def start_transaction():
+    try:
+        db_manager.connect()
+        db_manager.start_transaction()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+# Modify your existing submit_order route to handle transactions
+@app.route('/submit_order', methods=['POST'])
+def submit_order():
+    order_items = request.json
+    if not order_items:
+        return jsonify({'success': False, 'message': 'No items in the order'})
+
+    try:
+        db_manager.connect()
+        for item in order_items:
+            pizza_name = item['pizza_name']
+            size = item['size']
+            quantity = item['quantity']
+
+            if quantity <= 0:
+                continue
+
+            db_manager.add_order_info(pizza_name, size, quantity)
+
+        db_manager.commit_transaction()
+        return jsonify({'success': True, 'message': 'Order submitted successfully'})
+    except Exception as e:
+        db_manager.rollback_transaction()
+        print(f"Error processing order: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        db_manager.disconnect()
+
+
+@app.route('/history', methods=['GET', 'POST'])
+def order_history():
+    if 'user_id' not in session or session['role'] != 0:
+        return jsonify({'error': 'Unauthorized access'}), 403
+
+    try:
+        db_manager.connect()
+        search_order_id = request.form.get('order_id')
+
+        if search_order_id:
+            # Measure performance for indexed search
+            start_time = time.time()
+            start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+            completed_orders = db_manager.search_completed_orders(search_order_id)
+            end_time = time.time()
+            end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+
+            indexed_performance = {
+                'execution_time': end_time - start_time,
+                'memory_used': end_memory - start_memory
+            }
+
+            # Measure performance for non-indexed search
+            start_time = time.time()
+            start_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+            completed_orders_non_indexed = db_manager.search_completed_orders_non_indexed(search_order_id)
+            end_time = time.time()
+            end_memory = psutil.Process().memory_info().rss / 1024 / 1024  # MB
+
+            non_indexed_performance = {
+                'execution_time': end_time - start_time,
+                'memory_used': end_memory - start_memory
+            }
+
+            performance = {
+                'order_id_search': {
+                    'indexed': indexed_performance,
+                    'non_indexed': non_indexed_performance
+                }
+            }
+        else:
+            completed_orders = db_manager.get_completed_orders()
+            performance = None
+
+        return render_template('history.html',
+                               orders=completed_orders,
+                               performance=performance)
+    except Exception as e:
+        return jsonify({'error': f"Failed to fetch history: {str(e)}"}), 500
+    finally:
+        db_manager.disconnect()
+
+
+@app.route('/check_staff_lock', methods=['POST'])
+def check_staff_lock():
+    global staff_modification_lock
+    data = request.json
+    current_staff_id = data.get('staff_id')
+
+    # Clear expired locks (15 minutes timeout)
+    if staff_modification_lock['staff_id'] and time.time() - staff_modification_lock['timestamp'] >= 900:
+        staff_modification_lock['staff_id'] = None
+        staff_modification_lock['timestamp'] = None
+
+    # Check if lock exists and is valid
+    if staff_modification_lock['staff_id'] and staff_modification_lock['staff_id'] != current_staff_id:
+        return jsonify({
+            'locked': True,
+            'message': f"Another staff member is currently modifying pizzas."
+        })
+
+    # Update or set new lock
+    staff_modification_lock['staff_id'] = current_staff_id
+    staff_modification_lock['timestamp'] = time.time()
+
+    return jsonify({'locked': False})
+
+
+@app.route('/release_staff_lock', methods=['POST'])
+def release_staff_lock():
+    global staff_modification_lock
+    data = request.json
+    current_staff_id = data.get('staff_id')
+
+    if staff_modification_lock['staff_id'] == current_staff_id:
+        staff_modification_lock['staff_id'] = None
+        staff_modification_lock['timestamp'] = None
+
+    return jsonify({'success': True})
+
+@app.route('/batch_update_orders', methods=['POST'])
+def batch_update_orders():
+    try:
+        db_manager.connect()
+        data = request.json
+        for order_id, updates in data.items():
+            db_manager.update_order(order_id, updates['quantity'], updates['status'])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        db_manager.disconnect()
+
+
+def get_memory_usage():
+    import psutil
+    process = psutil.Process()
+    return process.memory_info().rss / 1024 / 1024  # Convert to MB
+
 
 def calculate_earnings():
     query = """
