@@ -3,62 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizza Boy - Staff Page</title>
+    <title>Staff Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 5px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .locked-message {
+            color: red;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .pizza-edit-row {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .pizza-edit-row input,
+        .pizza-edit-row select,
+        .pizza-edit-row textarea {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .pizza-edit-row textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .section-header {
+            margin: 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4CAF50;
+        }
+        .action-buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .action-buttons button {
+            margin-left: 10px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .save-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        .cancel-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+    </style>
 </head>
 <body>
-    <header class="staff-header">
-        <h1>Pizza Boy - Staff Portal</h1>
-        <nav class="staff-nav">
+    <header>
+        <h1>Staff Dashboard</h1>
+        <nav>
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="#pizza-types">Pizza Types</a></li>
-                <li><a href="#orders">Orders</a></li>
+                <li><a href="/history">Order History</a></li>
             </ul>
         </nav>
-            <div id="user-info">
-                <p>Welcome, {{session['username']}}</span>!</p>
-                <button onclick="logout()">Logout</button>
-            </div>
+        <div id="user-info">
+            <p>Welcome, {{ session['username'] }}!</p>
+            <button onclick="handleLogout()">Logout</button>
+        </div>
     </header>
 
     <main>
-        <section id="pizza-types">
-            <h2>Pizza Types</h2>
-            <table id="pizza-types-table">
+        <section id="pizza-section">
+            <h2 class="section-header">Pizza Management</h2>
+            <button id="edit-pizzas-btn">Edit Pizzas</button>
+            <div id="lock-message" class="locked-message" style="display: none;"></div>
+
+            <div id="edit-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Edit Pizzas</h2>
+                    <form id="pizza-edit-form">
+                        {% for pizza in pizza_types %}
+                        <div class="pizza-edit-row" data-pizza-id="{{ pizza[0] }}">
+                            <h3>Pizza #{{ pizza[0] }}</h3>
+                            <input type="text" name="name" value="{{ pizza[1] }}" placeholder="Pizza Name">
+                            <input type="text" name="category" value="{{ pizza[2] }}" placeholder="Category">
+                            <textarea name="ingredients" placeholder="Ingredients">{{ pizza[3] }}</textarea>
+                        </div>
+                        {% endfor %}
+                        <div class="action-buttons">
+                            <button type="button" class="cancel-button">Cancel</button>
+                            <button type="submit" class="save-button">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section id="orders-section">
+            <h2 class="section-header">Current Orders</h2>
+            <table id="orders-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Category</th>
-                        <th>Ingredients</th>
+                        <th>Order ID</th>
+                        <th>Pizza Name</th>
+                        <th>Quantity</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for pizza in pizza_types%}
+                    {% for order in pizza_orders %}
                     <tr>
-                        <td>{{pizza[0]}}</td>
-                        <td>{{pizza[1]}}</td>
-                        <td>{{pizza[2]}}</td>
-                        <td>{{pizza[3]}}</td>
-                        <td class="update-column">
-                            <button id="update-button" class='update-button' onclick="toggleForm('{{ pizza[0] }}')">Update</button>
-                        </td>
-                    </tr>
-                    <!-- Form for updating the pizza, hidden by default -->
-                    <tr id="update-form-row-{{ pizza[0] }}" style="display:none;">
-                        <td colspan="5">
-                            <form id="updateForm-{{ pizza[0] }}" action="{{ url_for('update_pizza', pizza_id=pizza[0]) }}" method="POST">
-                                <label for="name">Name:</label>
-                                <input type="text" id="name" name="name" value="{{ pizza[1] }}" required>
-                                
-                                <label for="category">Category:</label>
-                                <input type="text" id="category" name="category" value="{{ pizza[2] }}" required>
-                                
-                                <label for="ingre">Ingredients:</label>
-                                <input type="text" id="ingre" name="ingre" value="{{ pizza[3] }}" required>
-                                
-                                <button type="submit">Submit</button>
+                        <td>{{ order[0] }}</td>
+                        <td>{{ order[1] }}</td>
+                        <td>{{ order[2] }}</td>
+                        <td>
+                            <form action="{{ url_for('complete_order', order_id=order[0]) }}" method="POST" style="display: inline;">
+                                <button type="submit">Complete</button>
+                            </form>
+                            <form action="{{ url_for('delete_order', order_id=order[0]) }}" method="POST" style="display: inline;">
+                                <button type="submit">Delete</button>
                             </form>
                         </td>
                     </tr>
@@ -66,88 +150,97 @@
                 </tbody>
             </table>
         </section>
-
-        <section id="orders">
-            <div class="table-container">
-                <h2>Orders</h2>
-                <table id="orders-table">
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Pizza ID</th>
-                            <th>Quantity</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in pizza_orders%}
-                        <tr>
-                            <td>{{order[0]}}</td>
-                            <td>{{order[1]}}</td>
-                            <td>{{order[2]}}</td>
-                            <td class="delete-column">
-                                <form action="{{ url_for('delete_order', order_id=order[0]) }}" method="post">
-                                    <button type="submit" class="delete-button">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="earnings" class="section">
-                <h2>Earnings Analysis</h2>
-                <div class="earnings-summary">
-                    <h3>Total Earnings: ${{ "%.2f"|format(total_earnings) }}</h3>
-                </div>
-                <div class="earnings-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Pizza Name</th>
-                                <th>Size</th>
-                                <th>Price</th>
-                                <th>Quantity Sold</th>
-                                <th>Total Earnings</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in earnings_data %}
-                            <tr>
-                                <td>{{ row[0] }}</td>
-                                <td>{{ row[1] }}</td>
-                                <td>${{ "%.2f"|format(row[2]) }}</td>
-                                <td>{{ row[3] }}</td>
-                                <td>${{ "%.2f"|format(row[4]) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
     </main>
 
-    <footer>
-        <p>Pizza Boy © 2024</p>
-    </footer>
-
     <script>
+        const staffId = '{{ session["user_id"] }}';
+        let isEditing = false;
+
         document.addEventListener('DOMContentLoaded', function() {
-            fetchStaffInfo();
-            document.getElementById('user-name').textContent = sessionStorage.getItem('username');
+            const editButton = document.getElementById('edit-pizzas-btn');
+            const cancelButton = document.querySelector('.cancel-button');
+            const editForm = document.getElementById('pizza-edit-form');
+
+            editButton.addEventListener('click', handleEditStart);
+            cancelButton.addEventListener('click', handleCancel);
+            editForm.addEventListener('submit', handleSubmit);
+            window.addEventListener('beforeunload', releaseStaffLock);
         });
 
-        function toggleForm(pizzaId) {
-            var formRow = document.getElementById("update-form-row-" + pizzaId);
-            if (formRow.style.display === "none") {
-                formRow.style.display = "table-row";  // Show the form
-            } else {
-                formRow.style.display = "none";   // Hide the form
-            }
+        function handleEditStart() {
+            if (isEditing) return;
+
+            fetch('/check_staff_lock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ staff_id: staffId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.locked) {
+                    document.getElementById('lock-message').textContent = data.message;
+                    document.getElementById('lock-message').style.display = 'block';
+                } else {
+                    isEditing = true;
+                    document.getElementById('edit-modal').style.display = 'block';
+                    document.getElementById('lock-message').style.display = 'none';
+                }
+            });
         }
 
-        function logout() {
+        function handleCancel() {
+            isEditing = false;
+            document.getElementById('edit-modal').style.display = 'none';
+            releaseStaffLock();
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            const promises = [];
+
+            document.querySelectorAll('.pizza-edit-row').forEach(row => {
+                const pizzaId = row.dataset.pizzaId;
+                const formData = new FormData();
+
+                formData.append('name', row.querySelector('[name="name"]').value);
+                formData.append('category', row.querySelector('[name="category"]').value);
+                formData.append('ingredients', row.querySelector('[name="ingredients"]').value);
+
+                promises.push(
+                    fetch(`/update_pizza/${pizzaId}`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                );
+            });
+
+            Promise.all(promises)
+                .then(responses => Promise.all(responses.map(r => r.json())))
+                .then(results => {
+                    const allSuccessful = results.every(r => r.success);
+                    if (allSuccessful) {
+                        handleCancel();
+                        location.reload();
+                    } else {
+                        alert('Some updates failed. Please try again.');
+                    }
+                });
+        }
+
+        function releaseStaffLock() {
+            fetch('/release_staff_lock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ staff_id: staffId })
+            });
+        }
+
+        function handleLogout() {
+            releaseStaffLock();
             fetch('/logout', {
                 method: 'POST',
                 headers: {
@@ -157,15 +250,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Redirect to the URL returned by the server (or directly to the homepage)
                     window.location.href = data.redirect_url;
-                } else {
-                    alert('Logout failed. Please try again.');
                 }
             })
             .catch(error => console.error('Error:', error));
         }
-
     </script>
 </body>
 </html>

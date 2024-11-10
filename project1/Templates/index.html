@@ -21,69 +21,217 @@
                 <button id="signup-btn" class="signup-btn" onclick="showSignupForm()">Sign Up</button>
             </div>
         {% endif %}
-        
     </header>
-        <div id="login-form" style="display: none;">
-            <form onsubmit="login(event)">
-                <input type="text" id="username" placeholder="Username" required>
-                <input type="password" id="password" placeholder="Password" required>
-                <button type="submit">Login</button>
-            </form>
-        </div>
 
-        <div id="signup-form" style="display: none;">
-            <h2>Sign Up</h2>
-            <input type="text" id="signup-username" placeholder="Username">
-            <input type="password" id="signup-password" placeholder="Password">
-            <button onclick="submitSignup()">Sign Up</button>
-        </div>
-
-
-<section class="menu">
-    <h2>Our Pizzas</h2>
-    <div id="pizza-list">
-        {% for pizza in pizzas %}
-        <div class="pizza-item" data-pizza-name="{{ pizza['name'] }}">
-            <p>
-                <img src="{{ pizza['image_path'] }}" alt="{{ pizza['name'] }}" width="200" height="200">
-            </p>
-            <h3>{{ pizza['name'] }}</h3>
-            <p>Category: {{ pizza['category'] }}</p>
-            <p>Ingredients: {{ pizza['ingredients'] }}</p>
-            <p>Size:
-                <select class="pizza-size" onchange="updatePrice(this)">
-                    {% for size, price in pizza['sizes'].items() %}
-                    <option value="{{ size }}">{{ size }} - ${{ price }}</option>
-                    {% endfor %}
-                </select>
-            </p>
-            <p class="price">Price: $<span>{{ pizza['sizes']['S'] }}</span></p>
-            <label for="quantity-{{ loop.index0 }}">Quantity:</label>
-            <input type="number" id="quantity-{{ loop.index0 }}" min="0" value="0">
-        </div>
-        {% endfor %}
+    <div id="login-form" style="display: none;">
+        <form onsubmit="login(event)">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
     </div>
-    <div class="submit-column">
-        <button class="submit-btn" onclick="submitOrder()">Submit Order</button>
-    </div>
-</section>
 
+    <div id="signup-form" style="display: none;">
+        <h2>Sign Up</h2>
+        <input type="text" id="signup-username" placeholder="Username">
+        <input type="password" id="signup-password" placeholder="Password">
+        <button onclick="submitSignup()">Sign Up</button>
+    </div>
+
+    <section class="menu">
+        <h2>Our Pizzas</h2>
+        <div id="pizza-list">
+            {% for pizza in pizzas %}
+            <div class="pizza-item" data-pizza-name="{{ pizza['name'] }}">
+                <p>
+                    <img src="{{ pizza['image_path'] }}" alt="{{ pizza['name'] }}" width="200" height="200">
+                </p>
+                <h3>{{ pizza['name'] }}</h3>
+                <p>Category: {{ pizza['category'] }}</p>
+                <p>Ingredients: {{ pizza['ingredients'] }}</p>
+                <p>Size:
+                    <select class="pizza-size" onchange="updatePrice(this)">
+                        {% for size, price in pizza['sizes'].items() %}
+                        <option value="{{ size }}">{{ size }} - ${{ price }}</option>
+                        {% endfor %}
+                    </select>
+                </p>
+                <p class="price">Price: $<span>{{ pizza['sizes']['S'] }}</span></p>
+                <label for="quantity-{{ loop.index0 }}">Quantity:</label>
+                <input type="number" id="quantity-{{ loop.index0 }}" min="0" value="0">
+                <button onclick="addToCart('{{ pizza['name'] }}', this)" class="add-to-cart-btn">Add to Cart</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Shopping Cart Button -->
+        <div class="cart-button" onclick="showCart()">
+            <span class="cart-icon">🛒</span>
+            <span class="cart-count">0</span>
+        </div>
+
+        <!-- Shopping Cart Modal -->
+        <div id="cart-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="hideCart()">&times;</span>
+                <h2>Your Cart</h2>
+                <div id="cart-items"></div>
+                <div class="cart-total">
+                    <p>Total: $<span id="cart-total-amount">0.00</span></p>
+                </div>
+                <button onclick="submitOrder()" class="submit-order-btn">Submit Order</button>
+            </div>
+        </div>
+    </section>
 
     <footer>
         <p>Pizza Boy © 2024</p>
     </footer>
 
+    <style>
+        .cart-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4CAF50;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .cart-icon {
+            font-size: 24px;
+            color: white;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1001;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 15% auto;
+            padding: 20px;
+            width: 70%;
+            max-width: 500px;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .cart-item button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .cart-total {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 2px solid #eee;
+            font-weight: bold;
+        }
+
+        .submit-order-btn {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .submit-order-btn:hover {
+            background: #45a049;
+        }
+
+        #pizza-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-around;
+        }
+
+        .pizza-item {
+            flex: 1 1 calc(45% - 20px);
+            max-width: calc(45% - 20px);
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .add-to-cart-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .add-to-cart-btn:hover {
+            background: #45a049;
+        }
+    </style>
+
     <script>
+        let cart = [];
+        let transactionStarted = false;
 
         function toggleLoginForm() {
             const loginForm = document.getElementById('login-form');
             const loginSection = document.getElementById('login-section');
             if (loginForm.style.display === 'none') {
                 loginForm.style.display = 'block';
-                loginSection.style.display = 'none'; // Hide login button
+                loginSection.style.display = 'none';
             } else {
                 loginForm.style.display = 'none';
-                loginSection.style.display = 'block'; // Show login button
+                loginSection.style.display = 'block';
             }
         }
 
@@ -129,8 +277,6 @@
             event.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            
-            console.log('Login button clicked. Username:', username, 'Password:', password); // Debugging log
 
             fetch('/login', {
                 method: 'POST',
@@ -142,18 +288,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Login Successfull!')
+                    alert('Login Successful!');
                     if (data.role === 0) {
-                        // Staff view
                         window.location.href = data.redirect_url;
-                    }
-                    else if(data.role == 1) {
-                        // If login is successful, update the page
+                    } else if(data.role === 1) {
                         window.location.href = data.redirect_url;
-                        document.getElementById("login-button").style.display = 'none';
-                        document.getElementById("login-section").style.display = 'none';
-                        document.getElementById("user-info").style.display = 'block';
-                        document.getElementById("user-name").textContent = data.username;  
                     }
                 } else {
                     alert('Login failed. Please try again.');
@@ -161,7 +300,7 @@
             })
             .catch(error => {
                 console.error('Error during login:', error);
-            }); 
+            });
         }
 
         function logout() {
@@ -170,73 +309,121 @@
                 .then(data => {
                     if (data.success) {
                         window.location.href = data.redirect_url;
-                        document.getElementById('user-info').style.display = 'none';
-                        document.getElementById('login-btn').style.display = 'inline-block';
-                        document.getElementById('staff').style.display = 'none';
-                        sessionStorage.removeItem('username');
                     }
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-        function getSizeFullName(sizeCode) {
-        const sizeCodes = {
-            'S': 'Small',
-            'M': 'Medium',
-            'L': 'Large'
-        };
-        return sizeCodes[sizeCode] || sizeCode;
-    }
+        function addToCart(pizzaName, button) {
+            const pizzaItem = button.closest('.pizza-item');
+            const size = pizzaItem.querySelector('.pizza-size').value;
+            const quantity = parseInt(pizzaItem.querySelector('input[type="number"]').value);
+            const price = parseFloat(pizzaItem.querySelector('.price span').textContent);
 
-        function submitOrder() {
-            const pizzaItems = document.querySelectorAll('.pizza-item');
-        const orderItems = [];
-
-        pizzaItems.forEach((item, index) => {
-            const pizza_name = item.getAttribute('data-pizza-name');
-            const size = item.querySelector('.pizza-size').value;
-            const quantity = parseInt(item.querySelector('input[type="number"]').value) || 0;
-
-            if (quantity > 0) {
-                orderItems.push({
-                    pizza_name: pizza_name,
-                    size: size,
-                    quantity: quantity
-                });
+            if (quantity <= 0) {
+                alert('Please select a quantity greater than 0');
+                return;
             }
-        });
 
-        console.log("Order Items to submit: ", orderItems);
+            if (!transactionStarted) {
+                startTransaction();
+            }
 
-        if (orderItems.length === 0) {
-            alert('Please select at least one item to order.');
-            return;
+            cart.push({
+                pizza_name: pizzaName,
+                size: size,
+                quantity: quantity,
+                price: price
+            });
+
+            updateCartCount();
+            alert('Added to cart!');
         }
 
-        fetch('http://127.0.0.1:5000/submit_order', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(orderItems)
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                alert('Order submitted successfully!');
-                // Reset quantities
-                pizzaItems.forEach(item => {
-                    item.querySelector('input[type="number"]').value = 0;
+        function startTransaction() {
+            fetch('/start_transaction', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        transactionStarted = true;
+                    }
                 });
-            } else {
-                alert('Failed to submit order: ' + result.message);
+        }
+
+        function showCart() {
+            const modal = document.getElementById('cart-modal');
+            const cartItems = document.getElementById('cart-items');
+            cartItems.innerHTML = '';
+            let total = 0;
+
+            cart.forEach((item, index) => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                cartItems.innerHTML += `
+                    <div class="cart-item">
+                        <p>${item.pizza_name} (${item.size}) x ${item.quantity}</p>
+                        <p>$${itemTotal.toFixed(2)}</p>
+                        <button onclick="removeFromCart(${index})">Remove</button>
+                    </div>
+                `;
+            });
+
+            document.getElementById('cart-total-amount').textContent = total.toFixed(2);
+            modal.style.display = 'block';
+        }
+
+        function hideCart() {
+            document.getElementById('cart-modal').style.display = 'none';
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            showCart();
+            updateCartCount();
+        }
+
+        function updateCartCount() {
+            document.querySelector('.cart-count').textContent = cart.length;
+        }
+
+        function submitOrder() {
+            if (cart.length === 0) {
+                alert('Your cart is empty!');
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error submitting order:', error);
-            alert('An error occurred while submitting the order. Please try again.');
-        });
-    }
+
+            fetch('/submit_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(cart)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Order submitted successfully!');
+                    cart = [];
+                    updateCartCount();
+                    hideCart();
+                    transactionStarted = false;
+                } else {
+                    alert('Failed to submit order: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting order:', error);
+                alert('An error occurred while submitting the order.');
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('cart-modal');
+            if (event.target === modal) {
+                hideCart();
+            }
+        }
     </script>
 </body>
 </html>
