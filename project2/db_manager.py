@@ -3,7 +3,7 @@ from bson.objectid import ObjectId
 import time
 import psutil
 import os
-
+import bcrypt
 
 class DBManager:
     def __init__(self, host='localhost', port=27017, database='project'):
@@ -12,6 +12,11 @@ class DBManager:
         self.host = host
         self.port = port
         self.database = database
+
+    def hashed_password(self, password: str) -> str:
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode(), salt)
+        return hashed.decode()
 
     def connect(self):
         """Establish a connection to MongoDB."""
@@ -115,13 +120,19 @@ class DBManager:
 
     def db_login(self, username, password):
         """Authenticate user login."""
-        user = self.db.User.find_one({'username': username, 'password': password})
+        user = self.db.User.find_one({'username': username})
+
         if user:
-            return {
-                'user_id': user['user_id'],
-                'username': user['username'],
-                'role': user['role']
-            }
+            stored_hash = user['password']
+            valid = bcrypt.checkpw(password.encode(), stored_hash.encode())
+            if valid:
+             return {
+                    'user_id': user['user_id'],
+                    'username': user['username'],
+                    'role': user['role']
+                }
+            else:
+                print('Password mismatch')
         print("User not found")
         return None
 
@@ -250,11 +261,12 @@ class DBManager:
     def add_user(self, username, password):
         """Add a new user."""
         try:
+            hash = self.hashed_password(password) 
             user_id = self.db.User.count_documents({})
             new_user = {
                 'user_id': user_id,
                 'username': username,
-                'password': password,
+                'password': hash,
                 'role': 1
             }
             self.db.User.insert_one(new_user)
