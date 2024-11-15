@@ -211,6 +211,74 @@ class DBManager:
         """
         return self.execute_query(query, (order_id,))
 
+    def acquire_staff_lock(self, staff_id):
+        """Acquire a table lock for staff modifications."""
+        try:
+            cursor = self.connection.cursor()
+
+            # Lock the tables that will be modified
+            cursor.execute("LOCK TABLES pizza_type WRITE, pizza_order WRITE")
+
+            # Return success since we have the lock
+            return True, None
+
+        except Error as e:
+            print(f"Error acquiring table lock: {e}")
+            return False, str(e)
+        finally:
+            cursor.close()
+
+    def release_staff_lock(self):
+        """Release all table locks."""
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("UNLOCK TABLES")
+            return True
+        except Error as e:
+            print(f"Error releasing table lock: {e}")
+            return False
+        finally:
+            cursor.close()
+
+    def batch_update_orders(self, order_updates):
+        """
+        Perform batch order updates with table locking.
+
+        Args:
+            order_updates: dict of {order_id: {'quantity': int, 'status': str}}
+        """
+        try:
+            cursor = self.connection.cursor()
+
+            # Lock the order_info table for writing
+            cursor.execute("LOCK TABLES order_info WRITE")
+
+            self.start_transaction()
+
+            for order_id, updates in order_updates.items():
+                query = """
+                    UPDATE order_info 
+                    SET quantity = %s, status = %s 
+                    WHERE order_id = %s
+                """
+                self.execute_query(query, (
+                    updates['quantity'],
+                    updates['status'],
+                    order_id
+                ))
+
+            self.commit_transaction()
+            return True
+
+        except Error as e:
+            self.rollback_transaction()
+            print(f"Error in batch update: {e}")
+            raise e
+        finally:
+            # Always release locks
+            cursor.execute("UNLOCK TABLES")
+            cursor.close()
+
     def start_transaction(self):
         """Start a new transaction."""
         self.connection.start_transaction()
