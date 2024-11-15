@@ -89,17 +89,14 @@ def staff_info():
 
 @app.route('/complete_order/<order_id>', methods=['POST'])
 def complete_order(order_id):
-    if 'user_id' not in session or session['role'] != 0:
-        return jsonify({'error': 'Unauthorized access'}), 403
-
     try:
         db_manager.connect()
-        if db_manager.mark_order_complete(order_id):
-            return redirect(url_for('staff_info'))
-        return "Order not found", 404
+        success = db_manager.complete_order(order_id)
+        if success:
+            return jsonify({'success': True})
+        return jsonify({'error': 'Failed to complete order'}), 400
     except Exception as e:
-        print(f"Error completing order: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         db_manager.disconnect()
 
@@ -184,12 +181,12 @@ def logout():
 def delete_order(order_id):
     try:
         db_manager.connect()
-        if db_manager.delete_orderrow(order_id):
-            return redirect(url_for('staff_info'))
-        return "Order not found", 404
+        success = db_manager.delete_order(order_id)
+        if success:
+            return jsonify({'success': True})
+        return jsonify({'error': 'Failed to delete order'}), 400
     except Exception as e:
-        print(f"Error deleting order: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return jsonify({'error': str(e)}), 500
     finally:
         db_manager.disconnect()
 
@@ -229,6 +226,60 @@ def signup():
         if db_manager.add_user(username, password):
             return jsonify({'success': True, 'message': 'User created successfully'})
         return jsonify({'success': False, 'message': 'Failed to create user'}), 500
+    finally:
+        db_manager.disconnect()
+
+
+@app.route('/check_staff_lock', methods=['POST'])
+def check_staff_lock():
+    if 'user_id' not in session or session['role'] != 0:
+        return jsonify({'error': 'Unauthorized access'}), 403
+
+    data = request.json
+    staff_id = data.get('staff_id')
+
+    try:
+        db_manager.connect()
+        success, message = db_manager.acquire_staff_lock(staff_id)
+        return jsonify({
+            'locked': not success,
+            'message': message
+        })
+    finally:
+        db_manager.disconnect()
+
+
+@app.route('/get_stats')
+def get_stats():
+    try:
+        db_manager.connect()
+        total_orders = len(db_manager.get_all_orders())
+        total_earnings = db_manager.get_total_earnings()
+        pizza_types = len(db_manager.get_pizza_types())
+
+        return jsonify({
+            'total_orders': total_orders,
+            'total_earnings': total_earnings,
+            'pizza_types': pizza_types
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db_manager.disconnect()
+
+
+@app.route('/release_staff_lock', methods=['POST'])
+def release_staff_lock():
+    if 'user_id' not in session or session['role'] != 0:
+        return jsonify({'error': 'Unauthorized access'}), 403
+
+    data = request.json
+    staff_id = data.get('staff_id')
+
+    try:
+        db_manager.connect()
+        success = db_manager.release_staff_lock(staff_id)
+        return jsonify({'success': success})
     finally:
         db_manager.disconnect()
 

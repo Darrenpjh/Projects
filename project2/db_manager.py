@@ -227,7 +227,7 @@ class DBManager:
         }
         return self.db.orders.insert_one(order)
 
-    def mark_order_complete(self, order_id):
+    def complete_order(self, order_id):
         """Mark an order as complete."""
         result = self.db.orders.update_one(
             {'_id': ObjectId(order_id)},
@@ -235,10 +235,14 @@ class DBManager:
         )
         return result.modified_count > 0
 
-    def delete_orderrow(self, order_id):
-        """Delete an order by ID."""
-        result = self.db.orders.delete_one({'_id': ObjectId(order_id)})
-        return result.deleted_count > 0
+    def delete_order(self, order_id):
+        """Delete an order."""
+        try:
+            result = self.db.orders.delete_one({"_id": ObjectId(order_id)})
+            return result.deleted_count > 0
+        except Exception as e:
+            print(f"Error deleting order: {e}")
+            return False
 
     def update_pizza_type(self, pizza_type_id, new_name, new_category, new_ingredients):
         """Update pizza type information."""
@@ -311,3 +315,75 @@ class DBManager:
             {'$sort': {'total_earnings': -1}}
         ]
         return list(self.db.orders.aggregate(pipeline))
+
+    def get_total_earnings(self):
+        """Calculate total earnings from all completed orders."""
+        pipeline = [
+            {"$match": {"status": "completed"}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_price"}}}
+        ]
+        result = list(self.db.orders.aggregate(pipeline))
+        return result[0]["total"] if result else 0
+
+    def acquire_staff_lock(self, staff_id):
+        """Acquire a lock for staff modifications using MongoDB."""
+        try:
+            # Try to create or update a lock document
+            result = self.db.staff_locks.update_one(
+                {'resource': 'menu_edit'},
+                {
+                    '$setOnInsert': {
+                        'locked_by': staff_id,
+                    }
+                },
+                upsert=True
+            )
+
+            # Check if we got the lock
+            if result.upserted_id:
+                return True, None
+
+            # If lock exists, check who has it
+            lock = self.db.staff_locks.find_one({'resource': 'menu_edit'})
+            if lock and str(lock['locked_by']) != str(staff_id):
+                return False, f"Menu is currently being edited by another staff member"
+
+            return True, None
+
+        except Exception as e:
+            print(f"Error acquiring lock: {e}")
+            return False, str(e)
+
+    def release_staff_lock(self, staff_id):
+        """Release the staff lock."""
+        try:
+            result = self.db.staff_locks.delete_one({
+                'resource': 'menu_edit',
+                'locked_by': staff_id
+            })
+            return result.deleted_count > 0
+        except Exception as e:
+            print(f"Error releasing lock: {e}")
+            return False
+
+    def batch_update_orders(self, order_updates):
+        """Perform batch order updates with MongoDB transactions."""
+        try:
+            # Start a session for the transaction
+            with self.client.start_session() as session:
+                with session.start_transaction():
+                    for order_id, updates in order_updates.items():
+                        self.db.orders.update_one(
+                            {'_id': ObjectId(order_id)},
+                            {
+                                '$set': {
+                                    'quantity': updates['quantity'],
+                                    'status': updates['status']
+                                }
+                            },
+                            session=session
+                        )
+                    return True
+        except Exception as e:
+            print(f"Error in batch update: {e}")
+            return False
