@@ -260,6 +260,45 @@
             opacity: 0.9;
             transform: translateY(-1px);
         }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            background: white;
+            margin: 5% auto;
+            padding: 2rem;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+         .locked-message {
+            color: #ff4d4d;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -281,10 +320,31 @@
         <div id="error-message" class="error-message"></div>
         <div id="success-message" class="success-message"></div>
 
-        <section id="edit-menu-section" class="section">
-            <h2 class="section-header">Edit Menu</h2>
-            <button class="edit-btn" onclick="handleEditMenu()">Edit Menu</button>
-            <button class="edit-btn" id="done-btn" onclick="handleDoneEditing()" style="display:none;">Done Editing</button>
+        <section id="pizza-section">
+            <h2 class="section-header">Pizza Management</h2>
+            <button id="edit-pizzas-btn" class="edit-btn" onclick="handleEditMenu()">Edit Pizzas</button>
+            <div id="lock-message" class="locked-message"></div>
+
+            <div id="edit-modal" class="modal">
+                <div class="modal-content">
+                    <button class="close-btn" onclick="closeMenuModal()">Close</button>
+                    <h2>Edit Pizzas</h2>
+                    <form id="pizza-edit-form">
+                        {% for pizza in pizza_types %}
+                        <div class="pizza-edit-row" data-pizza-id="{{ pizza[0] }}">
+                            <h3>Pizza #{{ pizza[0] }}</h3>
+                            <input type="text" name="name" value="{{ pizza[1] }}" placeholder="Pizza Name">
+                            <input type="text" name="category" value="{{ pizza[2] }}" placeholder="Category">
+                            <textarea name="ingredients" placeholder="Ingredients">{{ pizza[3] }}</textarea>
+                        </div>
+                        {% endfor %}
+                        <div class="action-buttons">
+                            <button type="button" class="cancel-button" onclick="closeMenuModal()">Cancel</button>
+                            <button type="submit" class="save-button">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </section>
 
         <section id="overview-section">
@@ -373,11 +433,13 @@
             .then(data => {
                 if (!data.locked) {
                     showSuccess('Menu editing started.');
-                    document.querySelector('.edit-btn').style.display = 'none';
-                    document.getElementById('done-btn').style.display = 'inline-block';
+                    document.getElementById('edit-modal').style.display = 'block';
+                    document.getElementById('lock-message').style.display = 'none';
                     isEditing = true;
                 } else {
                     showError(data.message || 'Menu is locked by another staff member.');
+                    document.getElementById('lock-message').textContent = data.message;
+                    document.getElementById('lock-message').style.display = 'block';
                 }
             })
             .catch(error => {
@@ -386,7 +448,31 @@
             });
         }
 
-        function handleDoneEditing() {
+        document.getElementById('pizza-edit-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            // Assuming the form submission is done via an AJAX request:
+            fetch('/save_pizza_changes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ formData: new FormData(this) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess('Changes saved successfully.');
+                    closeMenuModal();
+                } else {
+                    showError('Failed to save changes. Please try again.');
+                }
+            })
+            .catch(() => {
+                showError('Failed to save changes. Please try again.');
+            });
+        });
+
+        function closeMenuModal() {
             fetch('/release_staff_lock', {
                 method: 'POST',
                 headers: {
@@ -398,16 +484,14 @@
             .then(data => {
                 if (data.success) {
                     showSuccess('Editing session ended.');
-                    document.querySelector('.edit-btn').style.display = 'inline-block';
-                    document.getElementById('done-btn').style.display = 'none';
+                    document.getElementById('edit-modal').style.display = 'none';
                     isEditing = false;
                 } else {
-                    showError('Failed to end the editing session.');
+                    showError('Failed to release lock. Please try again.');
                 }
             })
-            .catch(error => {
-                console.error('Error releasing staff lock:', error);
-                showError('Failed to end editing. Please try again.');
+            .catch(() => {
+                showError('Failed to release lock. Please try again.');
             });
         }
 
