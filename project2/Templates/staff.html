@@ -161,6 +161,105 @@
             margin: 1rem 0;
             display: none;
         }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stats-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .orders-table th,
+        .orders-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            margin: 0 4px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .complete-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        /* New styles for menu editing */
+        .edit-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .done-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .edit-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .edit-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -169,7 +268,6 @@
         <nav>
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/staff">Staff Dashboard</a></li>
                 <li><a href="/history">Order History</a></li>
             </ul>
         </nav>
@@ -182,6 +280,12 @@
     <main>
         <div id="error-message" class="error-message"></div>
         <div id="success-message" class="success-message"></div>
+
+        <section id="edit-menu-section" class="section">
+            <h2 class="section-header">Edit Menu</h2>
+            <button class="edit-btn" onclick="handleEditMenu()">Edit Menu</button>
+            <button class="edit-btn" id="done-btn" onclick="handleDoneEditing()" style="display:none;">Done Editing</button>
+        </section>
 
         <section id="overview-section">
             <h2 class="section-header">Overview</h2>
@@ -255,6 +359,56 @@
             setTimeout(() => {
                 successDiv.style.display = 'none';
             }, 5000);
+        }
+
+        function handleEditMenu() {
+            fetch('/check_staff_lock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ staff_id: staffId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.locked) {
+                    showSuccess('Menu editing started.');
+                    document.querySelector('.edit-btn').style.display = 'none';
+                    document.getElementById('done-btn').style.display = 'inline-block';
+                    isEditing = true;
+                } else {
+                    showError(data.message || 'Menu is locked by another staff member.');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking staff lock:', error);
+                showError('Failed to start editing. Please try again.');
+            });
+        }
+
+        function handleDoneEditing() {
+            fetch('/release_staff_lock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ staff_id: staffId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess('Editing session ended.');
+                    document.querySelector('.edit-btn').style.display = 'inline-block';
+                    document.getElementById('done-btn').style.display = 'none';
+                    isEditing = false;
+                } else {
+                    showError('Failed to end the editing session.');
+                }
+            })
+            .catch(error => {
+                console.error('Error releasing staff lock:', error);
+                showError('Failed to end editing. Please try again.');
+            });
         }
 
         function completeOrder(orderId) {
