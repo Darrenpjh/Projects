@@ -144,12 +144,12 @@ class DBManager:
         else:
             raise ValueError(f"Pizza '{pizza_name}' with size '{size}' not found in database.")
 
-    def add_order_info(self, pizza_name, size, quantity):
+    def add_order_info(self, pizza_name, size, quantity, user_id):
         """Add a detail to an order by fetching pizza_id from pizza_name and size."""
         try:
             pizza_id = self.get_pizza_id_by_name_and_size(pizza_name, size)
-            query = "INSERT INTO order_info (pizza_id, quantity, status) VALUES (%s, %s, 0)"
-            self.execute_query(query, (pizza_id, quantity))
+            query = "INSERT INTO order_info (pizza_id, quantity, status, user_id) VALUES (%s, %s, 0, %s)"
+            self.execute_query(query, (pizza_id, quantity, user_id))
             self.connection.commit()
             print(f"Order info added successfully for {pizza_name}, size {size}.")
         except Error as e:

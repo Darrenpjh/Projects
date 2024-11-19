@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # This generates a random secret key
 
 # Initialize your DBManager instance
-db_manager = DBManager(host='localhost', user='root', password='1234', database='project')
+db_manager = DBManager(host='localhost', user='root', password='root', database='project')
 
 staff_modification_lock = {"staff_id": None, "timestamp" : None}
 
@@ -225,6 +225,8 @@ def submit_order():
 
     try:
         db_manager.connect()
+        user_id = session.get('user_id')
+        print("User ID from session:", user_id)  # Debug print to confirm session
         for item in order_items:
             pizza_name = item['pizza_name']
             size = item['size']
@@ -233,7 +235,7 @@ def submit_order():
             if quantity <= 0:
                 continue
 
-            db_manager.add_order_info(pizza_name, size, quantity)
+            db_manager.add_order_info(pizza_name, size, quantity, user_id)
 
         db_manager.commit_transaction()
         return jsonify({'success': True, 'message': 'Order submitted successfully'})
