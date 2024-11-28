@@ -14,14 +14,44 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+
+-- Dumping database structure for project
+CREATE DATABASE IF NOT EXISTS `project` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
+USE `project`;
+
+-- Dumping structure for table project.login_info
+CREATE TABLE IF NOT EXISTS `login_info` (
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(50) NOT NULL,
+  `role` int(11) NOT NULL,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
 -- Dumping data for table project.login_info: ~4 rows (approximately)
+DELETE FROM `login_info`;
 INSERT INTO `login_info` (`user_id`, `username`, `password`, `role`) VALUES
 	(1, 'root', 'root', 0),
 	(2, 'tom', 'tom', 1),
 	(3, 'Gary', '1234', 1),
 	(5, 'staff', 'staff', 0);
 
+-- Dumping structure for table project.order_info
+CREATE TABLE IF NOT EXISTS `order_info` (
+  `order_id` int(11) NOT NULL AUTO_INCREMENT,
+  `pizza_id` varchar(255) NOT NULL,
+  `quantity` int(11) DEFAULT NULL,
+  `status` int(11) DEFAULT NULL,
+  PRIMARY KEY (`order_id`),
+  KEY `pizza_id` (`pizza_id`),
+  KEY `idx_order_id` (`order_id`,`status`),
+  KEY `idx_status` (`status`,`order_id`),
+  KEY `idx_pizza_id` (`pizza_id`,`status`),
+  CONSTRAINT `order_info_ibfk_1` FOREIGN KEY (`pizza_id`) REFERENCES `pizza_order` (`pizza_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=928 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
 -- Dumping data for table project.order_info: ~922 rows (approximately)
+DELETE FROM `order_info`;
 INSERT INTO `order_info` (`order_id`, `pizza_id`, `quantity`, `status`) VALUES
 	(1, 'cali_ckn_s', 1, NULL),
 	(2, 'calabrese_m', 1, NULL),
@@ -946,7 +976,19 @@ INSERT INTO `order_info` (`order_id`, `pizza_id`, `quantity`, `status`) VALUES
 	(926, 'big_meat_m', 2, 1),
 	(927, 'big_meat_m', 2, 1);
 
+-- Dumping structure for table project.pizza_order
+CREATE TABLE IF NOT EXISTS `pizza_order` (
+  `pizza_id` varchar(255) NOT NULL,
+  `pizza_type_id` varchar(255) NOT NULL,
+  `size` char(1) NOT NULL,
+  `price` float NOT NULL,
+  PRIMARY KEY (`pizza_id`),
+  KEY `pizza_type_id` (`pizza_type_id`),
+  CONSTRAINT `pizza_order_ibfk_1` FOREIGN KEY (`pizza_type_id`) REFERENCES `pizza_type` (`pizza_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
 -- Dumping data for table project.pizza_order: ~96 rows (approximately)
+DELETE FROM `pizza_order`;
 INSERT INTO `pizza_order` (`pizza_id`, `pizza_type_id`, `size`, `price`) VALUES
 	('bbq_ckn_l', 'bbq_ckn', 'L', 20.75),
 	('bbq_ckn_m', 'bbq_ckn', 'M', 16.75),
@@ -1045,7 +1087,18 @@ INSERT INTO `pizza_order` (`pizza_id`, `pizza_type_id`, `size`, `price`) VALUES
 	('veggie_veg_m', 'veggie_veg', 'M', 16),
 	('veggie_veg_s', 'veggie_veg', 'S', 12);
 
+-- Dumping structure for table project.pizza_type
+CREATE TABLE IF NOT EXISTS `pizza_type` (
+  `pizza_type_id` varchar(255) NOT NULL,
+  `name` varchar(50) DEFAULT NULL,
+  `category` varchar(15) DEFAULT NULL,
+  `ingredients` varchar(120) DEFAULT NULL,
+  `image_path` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`pizza_type_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
 -- Dumping data for table project.pizza_type: ~32 rows (approximately)
+DELETE FROM `pizza_type`;
 INSERT INTO `pizza_type` (`pizza_type_id`, `name`, `category`, `ingredients`, `image_path`) VALUES
 	('bbq_ckn', 'The Barbecue Chicken Pizza', 'Chicken', '"Barbecued Chicken, Red Peppers, Green Peppers, Tomatoes, Red Onions, Barbecue Sauce"', '/static/images/pizzas/bbq chicken.jpg\r'),
 	('big_meat', 'The Big Meat Pizza', 'Classic', '"Bacon, Pepperoni, Italian Sausage, Chorizo Sausage"', '/static/images/pizzas/bmp.jpg\r'),
