@@ -15,7 +15,6 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 -- Dumping data for table project.login_info: ~4 rows (approximately)
-DELETE FROM `login_info`;
 INSERT INTO `login_info` (`user_id`, `username`, `password`, `role`) VALUES
 	(1, 'root', 'root', 0),
 	(2, 'tom', 'tom', 1),
@@ -23,7 +22,6 @@ INSERT INTO `login_info` (`user_id`, `username`, `password`, `role`) VALUES
 	(5, 'staff', 'staff', 0);
 
 -- Dumping data for table project.order_info: ~922 rows (approximately)
-DELETE FROM `order_info`;
 INSERT INTO `order_info` (`order_id`, `pizza_id`, `quantity`, `status`) VALUES
 	(1, 'cali_ckn_s', 1, NULL),
 	(2, 'calabrese_m', 1, NULL),
@@ -949,7 +947,6 @@ INSERT INTO `order_info` (`order_id`, `pizza_id`, `quantity`, `status`) VALUES
 	(927, 'big_meat_m', 2, 1);
 
 -- Dumping data for table project.pizza_order: ~96 rows (approximately)
-DELETE FROM `pizza_order`;
 INSERT INTO `pizza_order` (`pizza_id`, `pizza_type_id`, `size`, `price`) VALUES
 	('bbq_ckn_l', 'bbq_ckn', 'L', 20.75),
 	('bbq_ckn_m', 'bbq_ckn', 'M', 16.75),
@@ -1049,7 +1046,6 @@ INSERT INTO `pizza_order` (`pizza_id`, `pizza_type_id`, `size`, `price`) VALUES
 	('veggie_veg_s', 'veggie_veg', 'S', 12);
 
 -- Dumping data for table project.pizza_type: ~32 rows (approximately)
-DELETE FROM `pizza_type`;
 INSERT INTO `pizza_type` (`pizza_type_id`, `name`, `category`, `ingredients`, `image_path`) VALUES
 	('bbq_ckn', 'The Barbecue Chicken Pizza', 'Chicken', '"Barbecued Chicken, Red Peppers, Green Peppers, Tomatoes, Red Onions, Barbecue Sauce"', '/static/images/pizzas/bbq chicken.jpg\r'),
 	('big_meat', 'The Big Meat Pizza', 'Classic', '"Bacon, Pepperoni, Italian Sausage, Chorizo Sausage"', '/static/images/pizzas/bmp.jpg\r'),
