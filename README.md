@@ -1,7 +1,4 @@
 ---
-
-# Pizza Boi App
-
 This is a web-based pizza ordering application where staff and customers can interact with the system to manage pizza orders. The app supports two backends: Project 1 (MySQL) and Project 2 (NoSQL with MongoDB).
 
 ---
